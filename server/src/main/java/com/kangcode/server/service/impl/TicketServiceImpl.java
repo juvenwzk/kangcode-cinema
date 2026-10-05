@@ -47,7 +47,9 @@ public class  TicketServiceImpl implements TicketService {
     @Override
     public Integer queryRemain(Long trainId, LocalDate travelDate, String seatType) {
         String date = travelDate.toString();
-        String key = RedisKeyConstant.ticketLockKey(trainId, date, seatType);
+        // 注意：余票必须用「库存 key」ticket:stock:*，不能用「锁 key」ticket:lock:*。
+        // 锁 key 归 Redisson 的 RLock 使用（Hash 结构），把余票字符串写进去会导致购票时 WRONGTYPE。
+        String key = RedisKeyConstant.ticketStockKey(trainId, date, seatType);
 
         // 1. 缓存命中直接返回
         String cached = stringRedisTemplate.opsForValue().get(key);
