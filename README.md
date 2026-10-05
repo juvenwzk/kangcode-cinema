@@ -83,6 +83,29 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 
 详细的分阶段计划见 [开发计划.md](开发计划.md)。
 
+## 业务流程图（9 张）
+
+从分层架构到数据一致性，**从零看懂业务层**。图是真实 PNG 文件，放在 `docs/diagrams/` 目录下：
+
+| 图 | 内容 | 出现在 |
+| --- | --- | --- |
+| 图 1 | 系统分层架构与依赖方向 | 开发计划 4.1 · P0 |
+| 图 2 | 一次 HTTP 请求的完整生命周期 | 开发计划 4.2 · P0 · P1 |
+| 图 3 | 登录鉴权全流程 | 开发计划 4.3 · P0 · P1 |
+| 图 4 | 余票查询与「缓存三兄弟」 | 开发计划 4.4 · P0 · P2 |
+| 图 5 | **购票主流程（核心）** | 开发计划 4.5 · P3 |
+| 图 6 | 订单状态机 | 开发计划 4.6 · P4 |
+| 图 7 | MQ 异步链路与超时关单 | 开发计划 4.7 · P3 · P4 |
+| 图 8 | 取消订单与退票 | 开发计划 4.8 · P4 |
+| 图 9 | 数据一致性全景 | 开发计划 4.9 · P0 · P2 |
+
+> 📊 **网页版 Markdown（语雀 / 飞书 / Notion）不解析相对路径的图片**，那边看不到这些图。
+> 请用浏览器打开 **`docs/diagrams/index.html`**（一次看全 9 张，带讲解），
+> 或直接用文件管理器打开 `docs/diagrams/` 目录逐个双击。
+>
+> 想改图：编辑 [docs/diagrams/make_diagrams.py](docs/diagrams/make_diagrams.py) 后执行
+> `python docs\diagrams\make_diagrams.py` 重新生成。
+
 ## 当前状态
 
 当前为 **准备工程（骨架）** 阶段，P2 已回退为待写：
@@ -106,7 +129,7 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 > 需要参考时用 `git diff main impl-baseline` 或 `git show impl-baseline:<文件路径>`。
 >
 > 账号需自行注册（`sql/init.sql` 不含账号）；需要管理端权限时手动绑定 `ADMIN` 角色并**重新登录**，
-> 详见 [开发计划.md](开发计划.md) 第 7.3 节。
+> 详见 [开发计划.md](开发计划.md) 第 8.3 节。
 
 ## 说明
 
