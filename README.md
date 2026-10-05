@@ -100,11 +100,14 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 | 图 9 | 数据一致性全景 | 开发计划 4.9 · P0 · P2 |
 
 > 📊 **网页版 Markdown（语雀 / 飞书 / Notion）不解析相对路径的图片**，那边看不到这些图。
-> 请用浏览器打开 **`docs/diagrams/index.html`**（一次看全 9 张，带讲解），
-> 或直接用文件管理器打开 `docs/diagrams/` 目录逐个双击。
+> 三个办法任选：
+> 1. **看 PDF（最省事）**：`docs/diagrams/康轨业务流程图.pdf` —— 9 张图合成一个 10 页 PDF，任何阅读器都能开，
+>    也可以直接上传到语雀当附件；
+> 2. **浏览器画廊**：双击 `docs/diagrams/index.html`，一次看全 9 张图并带讲解；
+> 3. **直接看 PNG**：打开 `docs/diagrams/` 目录逐个双击。
 >
 > 想改图：编辑 [docs/diagrams/make_diagrams.py](docs/diagrams/make_diagrams.py) 后执行
-> `python docs\diagrams\make_diagrams.py` 重新生成。
+> `python docs\diagrams\make_diagrams.py`（改完图后可再跑 `python docs\diagrams\make_pdf.py` 重新生成 PDF）。
 
 ## 当前状态
 
