@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>康轨 KangRail · 铁路客票服务</title>
+  <link rel="stylesheet" href="/css/style.css?v=20260917k">
+</head>
+<body>
+
+<!-- 顶部服务条 -->
+<div class="utility-bar">
+  <div class="wrap">
+    <span>欢迎使用康轨铁路客票服务平台</span>
+    <span class="utility-links">
+      <a href="#/home">购票须知</a>
+      <a href="#/home">帮助中心</a>
+      <span class="divider"></span>
+      <span>客服热线 12306</span>
+    </span>
+  </div>
+</div>
+
+<!-- 主导航 -->
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="logo" href="/">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="3" width="14" height="13" rx="3"></rect>
+        <path d="M5 10h14M9 3v7M15 3v7M8 19l-2 2M16 19l2 2M9 16v3M15 16v3"></path>
+      </svg>
+      <span class="logo-text">康轨<span class="logo-sub">KangRail</span></span>
+    </a>
+
+    <nav class="main-nav">
+      <a href="/" data-nav="home">首页</a>
+      <a href="/api/train/page" data-nav="trains">车次查询</a>
+      <a href="/api/station/list" data-nav="stations">车站</a>
+      <a href="/api/ticket/remain" data-nav="remain">余票</a>
+      <a href="/api/order/my" data-nav="orders">我的订单</a>
+      <a href="/api/admin/ping" data-nav="admin">管理控制台</a>
+      <a href="/console" data-nav="console">接口联调</a>
+    </nav>
+
+    <div class="header-right">
+      <button class="source-pill" id="sourcePill" title="点击切换数据源">
+        <span class="dot"></span><span id="sourceText">检测中</span>
+      </button>
+      <div class="user-box" id="userBox"></div>
+    </div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-cols">
+      <div>
+        <h5>购票服务</h5>
+      <a href="/api/train/page">车次查询</a>
+      <a href="/api/order/my">订单查询</a>
+      <a href="/api/ticket/remain">余票查询</a>
+      </div>
+      <div>
+        <h5>帮助支持</h5>
+        <a href="/">购票须知</a>
+        <a href="/">退改签规则</a>
+        <a href="/">常见问题</a>
+      </div>
+      <div>
+        <h5>关于平台</h5>
+        <a href="/">平台介绍</a>
+        <a href="/api/admin/ping">管理入口</a>
+      </div>
+      <div class="footer-brand">
+        <div class="footer-logo">康轨 KangRail</div>
+        <p>高并发铁路购票系统 · 前端演示环境</p>
+        <p class="muted">Spring Boot · JWT · MyBatis-Plus · MySQL · Redis · Redisson · Spring Cache · RabbitMQ</p>
+      </div>
+    </div>
+    <div class="copyright">© 2026 康轨铁路客票服务平台 · 本页面为学习项目原型，非真实售票渠道</div>
+  </div>
+</footer>
+
+<div class="modal-mask" id="modalMask" hidden>
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="/js/api.js?v=20260917k"></script>
+<script src="/js/ui.js?v=20260917k"></script>
+<script src="/js/pages.js?v=20260917k"></script>
+<script src="/js/app.js?v=20260917k"></script>
+</body>
+</html>

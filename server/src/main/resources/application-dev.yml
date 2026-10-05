@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/railway?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  redis:
+    # Redis 与 youmall 使用同一套远程服务
+    host: 43.166.0.94
+    port: 6379
+    password: "123456"
+  rabbitmq:
+    # RabbitMQ 与 youmall 使用同一套远程服务
+    host: 43.166.0.94
+    port: 5672
+    username: admin
+    password: "123456"
+
+rabbitmq:
+  consumer:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
