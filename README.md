@@ -2,7 +2,7 @@
 
 > 包名：`com.kangcode` ｜ Maven 坐标：`com.kangcode:kangcode-railway-ticket`
 
-KangRail（康轨）是一个面向高并发场景的铁路购票系统示例工程，重点演练 **缓存 + 分布式锁 + 消息队列 + Binlog 同步** 的经典削峰/一致性架构。
+KangRail（康轨）是一个面向高并发场景的铁路购票系统示例工程，重点演练 **缓存 + 分布式锁 + 消息队列** 的经典削峰/一致性架构。
 
 ## 技术栈
 
@@ -11,7 +11,7 @@ KangRail（康轨）是一个面向高并发场景的铁路购票系统示例工
 | 基础框架 | Spring Boot 2.7（JDK 8） | 应用容器 |
 | 认证鉴权 | JWT（jjwt）+ Spring MVC 拦截器 | 登录签发 token，拦截器校验，`UserContext` 存放当前用户 |
 | ORM | MyBatis-Plus | 数据访问、分页、乐观锁 |
-| 数据库 | MySQL 8.0 | 主数据存储（开启 ROW 级 Binlog） |
+| 数据库 | MySQL 8.0 | 主数据存储 |
 | 缓存 | Spring Cache（Redis 实现）+ StringRedisTemplate | 注解式缓存读接口、余票缓存 |
 | 分布式锁 | Redisson | 购票加锁、Lua 原子扣减 |
 | 消息队列 | RabbitMQ | 下单/支付/关单异步化、削峰 |
@@ -85,17 +85,28 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 
 ## 当前状态
 
-当前为 **准备工程（骨架）** 阶段：
+当前为 **准备工程（骨架）** 阶段，P2 已回退为待写：
 
 - [x] Maven 多模块工程与依赖管理
 - [x] 配置文件（MySQL / Redis / Spring Cache / Redisson / RabbitMQ / JWT）
-- [x] Docker Compose 与 SQL 初始化脚本
-- [x] 实体 / Mapper / Service / Controller 占位骨架
-- [ ] 认证与 RBAC 具体实现
-- [ ] 余票缓存与定时对账实现
-- [ ] 分布式锁 + Lua 扣减实现
-- [ ] RabbitMQ 下单 / 关单 / 释放库存实现
-- [ ] 压测与性能治理
+- [x] Docker Compose 与 SQL 初始化脚本（9 张表 + 演示数据，**不含账号**）
+- [x] 实体 / Mapper / Service / Controller 骨架
+- [x] 认证与权限（JWT + 拦截器 + `UserContext`，样例已跑通）
+- [x] 余票缓存（空值防穿透 / 互斥重建防击穿 / TTL 抖动防雪崩）
+- [ ] P2-1 车次经停站组装
+- [ ] P2-2 放票与库存预热接口
+- [ ] P2-3 定时对账任务
+- [ ] P2-4 管理端写接口 + 缓存清理（可选）
+- [ ] P3 分布式锁 + Lua 原子扣减 + MQ 异步落库
+- [ ] P4 支付回调 / 超时关单 / 取消释放库存
+- [ ] P5 压测与性能治理
+- [ ] P6 可观测性与上线
+
+> 项目已初始化 git：`main` 为准备工程基线，`impl-baseline` 保存了回退前的 P2 完整实现，
+> 需要参考时用 `git diff main impl-baseline` 或 `git show impl-baseline:<文件路径>`。
+>
+> 账号需自行注册（`sql/init.sql` 不含账号）；需要管理端权限时手动绑定 `ADMIN` 角色并**重新登录**，
+> 详见 [开发计划.md](开发计划.md) 第 7.3 节。
 
 ## 说明
 
