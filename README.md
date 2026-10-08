@@ -8,7 +8,7 @@ KangRail（康轨）是一个面向高并发场景的铁路购票系统示例工
 
 | 分类 | 选型 | 用途 |
 | --- | --- | --- |
-| 基础框架 | Spring Boot 2.7（JDK 8） | 应用容器 |
+| 基础框架 | Spring Boot 2.7（**JDK 17**） | 应用容器 |
 | 认证鉴权 | JWT（jjwt）+ Spring MVC 拦截器 | 登录签发 token，拦截器校验，`UserContext` 存放当前用户 |
 | ORM | MyBatis-Plus | 数据访问、分页、乐观锁 |
 | 数据库 | MySQL 8.0 | 主数据存储 |
@@ -50,7 +50,7 @@ docker compose up -d
 
 ### 2. 构建与运行
 
-要求：JDK 8+、Maven 3.6+。
+要求：**JDK 17**、Maven 3.6+。
 
 ```bash
 mvn clean package -DskipTests
@@ -170,5 +170,10 @@ cd C:\nginx-1.30.0\nginx-1.30.0
 
 ## 说明
 
-- 当前环境为 JDK 8，故采用 Spring Boot 2.7.x；如需升级 JDK 17+ 可切换 Spring Boot 3.x（注意 MP 的 `-spring-boot3` 依赖差异）。
+- **统一使用 JDK 17**（`C:\Users\王照康\.jdks\jdk-17.0.2`）。Spring Boot 2.7.18 支持 JDK 17，无需升到 Boot 3.x。
+- ⚠️ 因为跑在 JDK 17 上，`framework/pom.xml` **必须显式引入 `javax.xml.bind:jaxb-api`** ——
+  `jjwt 0.9.1` 内部用了 `javax.xml.bind.DatatypeConverter`，而该模块从 JDK 11 起已不在 JDK 里，
+  缺了它登录时会抛 `NoClassDefFoundError`。已配好，删除会出问题。
+- ⚠️ **IDEA 的 Project SDK 必须设成 JDK 17**（File → Project Structure → Project）。
+  如果 IDEA 用 JDK 21 跑，同样会报上面那个 `NoClassDefFoundError`（这个坑真实踩过）。
 - RabbitMQ 消费端由 `rabbitmq.consumer.enabled` 控制（dev 已开启）；业务队列由 `RabbitMqConfig` 自动声明。

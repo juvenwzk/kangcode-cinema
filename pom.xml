@@ -27,9 +27,10 @@
     </parent>
 
     <properties>
-        <java.version>1.8</java.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- 统一使用 JDK 17（IDEA / Maven / 运行时三处一致） -->
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
@@ -37,6 +38,10 @@
         <redisson.version>3.27.2</redisson.version>
         <jjwt.version>0.9.1</jjwt.version>
         <hutool.version>5.8.25</hutool.version>
+        <!-- jjwt 0.9.1 依赖 javax.xml.bind.DatatypeConverter；
+             JDK 11 起该模块已从 JDK 移除，必须显式引入 API（仅 API 就够，
+             jjwt 只用到其中的 Base64 静态方法）。 -->
+        <jaxb-api.version>2.3.1</jaxb-api.version>
     </properties>
 
     <dependencyManagement>
@@ -83,6 +88,13 @@
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt</artifactId>
                 <version>${jjwt.version}</version>
+            </dependency>
+            <!-- JDK 11+ 下 jjwt 0.9.1 需要它，否则报
+                 NoClassDefFoundError: javax/xml/bind/DatatypeConverter -->
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>cn.hutool</groupId>
