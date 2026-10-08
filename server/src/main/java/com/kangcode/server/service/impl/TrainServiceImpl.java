@@ -91,7 +91,10 @@ public class TrainServiceImpl implements TrainService {
         trainMapper.updateById(train);
     }
 
-    // TODO(P2 任务 2-1)：组装经停站列表（train_station + station）→ List<TrainStationVO>
+    /**
+     * 组装经停站列表（任务 2-1，已实现）：train_station 按 stationNo 升序 + 批量查 station 回填站名/电报码。
+     * 先把 stationId 收集起来一次性 selectBatchIds，避免 N+1 查询。
+     */
     private List<TrainStationVO> listStations(Long trainId){
         //   1. 用 trainStationMapper 查 train_station，条件 trainId = ?，按 stationNo 升序；
         List<TrainStation> trainStations=trainStationMapper.selectList(

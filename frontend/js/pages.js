@@ -494,9 +494,31 @@
       });
 
       API.ticket.buy(payload).then(function (data) {
+        /* ⚠️ 后端 TicketServiceImpl.buy() 目前还是 TODO（return null），
+           Controller 会把这个 null 包成 Result.ok(null) —— 也就是 HTTP 200 + code 200 + data null。
+           如果直接当成功处理，会显示「下单成功」但数据库里根本没有订单。
+           所以这里必须判断 data 里有没有订单号。 */
+        if (!data || !data.orderNo) {
+          out.innerHTML = '<div style="line-height:1.9">' +
+            '<span style="color:var(--price);font-weight:600">下单未生效</span>' +
+            '<div class="muted" style="margin-top:8px">' +
+            '  后端返回了 <b>HTTP 200 / code 200</b>，但 <code>data</code> 是空的。<br>' +
+            '  说明 <code>TicketServiceImpl.buy()</code> 还是占位实现（<code>return null</code>），<b>并没有真的创建订单</b>。' +
+            '</div>' +
+            '<div class="muted" style="margin-top:6px;font-size:12px">原始返回：<code>' + esc(JSON.stringify(data)) + '</code></div>' +
+            '<div style="margin-top:10px">' +
+            '  这块属于 <b>P3（幂等键 → Redisson 锁 → Lua 原子预扣 → MQ 异步落库）</b>。' +
+            '  实现之后本页面无需任何改动，就能正常下单。' +
+            '</div>' +
+            '<div style="margin-top:10px"><a class="btn btn-outline btn-sm" href="/api/ticket/remain">先去看余票</a></div>' +
+            '</div>';
+          return;
+        }
         out.innerHTML = '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
           '<span style="color:var(--green);font-weight:600">下单成功</span>' +
-          '<span>订单号：<b>' + esc((data && data.orderNo) || '-') + '</b></span>' +
+          '<span>订单号：<b>' + esc(data.orderNo) + '</b></span>' +
+          (data.totalAmount != null ? '<span>金额：<b>' + money(data.totalAmount) + '</b></span>' : '') +
+          (data.payExpireTime ? '<span class="muted">请在 ' + esc(data.payExpireTime) + ' 前支付</span>' : '') +
           '<a class="btn btn-primary btn-sm" href="/api/order/my">查看我的订单</a></div>';
       }).catch(function (err) {
         out.innerHTML = '<div style="color:var(--red);line-height:1.9">下单失败：' + esc(err.message || '') +
@@ -540,8 +562,18 @@
           var order = list.filter(function (o) { return o.orderNo === no; })[0];
           if (act === 'cancel') {
             UI.confirm('确认取消订单 ' + no + '？', function () {
+              var before = order ? String(order.status) : null;
               API.order.cancel(no).then(function () {
-                UI.toast('已调用取消接口'); App.route();
+                /* OrderServiceImpl.cancel() 目前是空实现：不报错、也不改状态。
+                   所以调用后重新查一次，用「状态有没有变」来判断是否真的生效。 */
+                return API.order.detail(no);
+              }).then(function (fresh) {
+                if (fresh && before !== null && String(fresh.status) === before) {
+                  UI.toast('接口返回成功，但订单状态没变 —— cancel() 还是 TODO（P3/P4）', 'warn');
+                } else {
+                  UI.toast('订单已取消');
+                }
+                App.route();
               }).catch(function (err) { UI.toast('取消失败：' + (err.message || ''), 'error'); });
             });
           }
@@ -612,13 +644,23 @@
      /api/admin/ping　管理控制台
      ====================================================================== */
   function admin() {
+    /* 支持从不同入口进入时定位到对应功能页 */
+    var path = location.pathname;
+    var initial = /stock\/publish/.test(path) ? 'publish'
+      : /admin\/train/.test(path) ? 'trains'
+        : /admin\/station/.test(path) ? 'stations'
+          : 'publish';
+
     app.innerHTML =
       '<div class="page">' +
-      '  <div class="page-head"><h2>管理控制台</h2><span class="sub"><code>GET /api/admin/ping</code>　<span id="adminPing">校验中…</span></span></div>' +
+      '  <div class="page-head"><h2>管理控制台</h2><span class="sub">' +
+      '    <code>GET /api/admin/ping</code>　<span id="adminPing">校验中…</span></span></div>' +
       '  <div class="admin-layout">' +
       '    <div class="card side-nav">' +
-      '      <button class="on" data-view="trains">车次库（GET /api/train/page）</button>' +
-      '      <button data-view="stock">余票查询（GET /api/ticket/remain）</button>' +
+      '      <button data-view="publish">放票 / 库存预热</button>' +
+      '      <button data-view="trains">车次维护</button>' +
+      '      <button data-view="stations">车站维护</button>' +
+      '      <button data-view="stock">余票查询</button>' +
       '      <button data-view="logs">接口调用日志</button>' +
       '    </div>' +
       '    <div id="adminBody">' + UI.skeletonRows(3) + '</div>' +
@@ -627,67 +669,211 @@
     var body = document.getElementById('adminBody');
     if (!API.hasToken()) { loginRequired(body, '管理控制台需要登录'); return; }
 
+    var VIEWS = { publish: loadPublish, trains: loadTrains, stations: loadStations, stock: loadStock, logs: loadLogs };
+
+    function show(view) {
+      document.querySelectorAll('.side-nav button').forEach(function (x) {
+        x.classList.toggle('on', x.getAttribute('data-view') === view);
+      });
+      VIEWS[view]();
+    }
+    document.querySelectorAll('.side-nav button').forEach(function (b) {
+      b.onclick = function () { show(b.getAttribute('data-view')); };
+    });
+
     API.admin.ping().then(function () {
       document.getElementById('adminPing').innerHTML = '<span style="color:var(--green)">权限校验通过（ADMIN）</span>';
-      loadTrains();
+      show(initial);
     }).catch(function (err) {
       document.getElementById('adminPing').innerHTML = '<span style="color:var(--red)">' + esc(err.message || '校验失败') + '</span>';
       body.innerHTML = '<div class="card"><div class="empty-state"><strong>需要管理员权限</strong>' +
-        esc(err.message || '') + '<div style="margin-top:14px"><a class="btn btn-primary" href="/api/auth/login">用 admin / admin123 登录</a></div></div></div>';
+        esc(err.message || '') +
+        '<div style="margin-top:14px"><a class="btn btn-primary" href="/api/auth/login">用 admin / admin123 登录</a></div>' +
+        '<div class="muted" style="margin-top:10px;font-size:12px">登录后需要重新进入本页（角色写在 JWT 里）</div></div></div>';
     });
 
-    document.querySelectorAll('.side-nav button').forEach(function (b) {
-      b.onclick = function () {
-        document.querySelectorAll('.side-nav button').forEach(function (x) { x.classList.remove('on'); });
-        b.classList.add('on');
-        var v = b.getAttribute('data-view');
-        if (v === 'trains') { loadTrains(); }
-        if (v === 'stock') { loadStock(); }
-        if (v === 'logs') { loadLogs(); }
-      };
-    });
+    /* ---------------- ① 放票 / 库存预热 ---------------- */
+    function loadPublish() {
+      body.innerHTML =
+        '<div class="card">' +
+        '  <div class="card-head"><h3>放票 / 库存预热</h3>' +
+        '    <span class="muted" style="font-size:12px"><code>POST /api/admin/stock/publish</code> · 仅 ADMIN</span></div>' +
+        '  <div class="card-body">' +
+        '    <div class="form-grid">' +
+        '      <div class="form-row"><label>车次 ID</label><input class="input" id="pbTrain" value="1"></div>' +
+        '      <div class="form-row"><label>乘车日期</label><input class="input" id="pbDate" value="' + today(1) + '"></div>' +
+        '      <div class="form-row"><label>席别</label><select class="input" id="pbSeat">' +
+        '        <option>二等座</option><option>一等座</option><option>商务座</option>' +
+        '        <option>硬卧</option><option>软卧</option><option>硬座</option><option>无座</option></select></div>' +
+        '      <div class="form-row"><label>放票数量</label><input class="input" id="pbCount" value="100"></div>' +
+        '    </div>' +
+        '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '      <button class="btn btn-primary" id="pbSubmit">放票</button>' +
+        '      <button class="btn btn-outline" id="pbAfter">放票后立刻查余票</button>' +
+        '      <span class="muted" style="font-size:12px">放票 → 查余票 → 再放一次，可以直观看到库存累加</span>' +
+        '    </div>' +
+        '    <div class="muted" style="margin-top:12px;font-size:12px;line-height:1.9">' +
+        '      这个接口做两件事：<br>' +
+        '      ① 写 <code>train_seat</code>（该「车次+日期+席别」不存在则插入，已存在则 <b>total / remain 一起累加</b>）<br>' +
+        '      ② 把最新余票 <b>预热进 Redis</b> 的 <code>ticket:stock:{trainId}:{date}:{seatType}</code><br>' +
+        '      <b>必须先放票，购票时 Redis 里才有库存可扣。</b>' +
+        '    </div>' +
+        '  </div>' +
+        '  <div class="card-body" style="border-top:1px solid var(--line)" id="pbResult">' +
+        '    <span class="muted">尚未调用</span></div>' +
+        '</div>';
 
-    function loadTrains() {
-      body.innerHTML = '<div class="card"><div class="card-head"><h3>车次库</h3></div>' +
-        '<div class="table-wrap"><table class="data-table" id="adTrainTable"></table></div></div>';
-      API.train.page({ page: 1, size: 20 }).then(function (p) {
-        var records = (p && p.records) || [];
-        document.getElementById('adTrainTable').innerHTML =
-          '<tr><th>ID</th><th>车次</th><th>名称</th><th>始发站</th><th>终到站</th><th>发车</th><th>到达</th><th>状态</th></tr>' +
-          (records.length ? records.map(function (t) {
-            return '<tr><td class="num">' + t.id + '</td><td><a href="/api/train/' + t.id + '"><b>' + esc(t.trainNo) + '</b></a></td>' +
-              '<td>' + esc(t.trainName || '-') + '</td><td class="num">' + (t.startStationId || '-') + '</td>' +
-              '<td class="num">' + (t.endStationId || '-') + '</td><td class="num">' + esc(hm(t.startTime)) + '</td>' +
-              '<td class="num">' + esc(hm(t.endTime)) + '</td><td>' + (t.status === 1 ? '运行' : '停运') + '</td></tr>';
-          }).join('') : '<tr><td class="muted">没有数据</td></tr>');
-      }).catch(function (err) { body.innerHTML = '<div class="card"><div class="empty-state">' + esc(err.message || '') + '</div></div>'; });
-    }
+      var out = document.getElementById('pbResult');
+      function vals() {
+        return {
+          trainId: document.getElementById('pbTrain').value.trim(),
+          travelDate: document.getElementById('pbDate').value.trim(),
+          seatType: document.getElementById('pbSeat').value,
+          count: document.getElementById('pbCount').value.trim()
+        };
+      }
+      function line(html) { out.innerHTML += (out.innerHTML.indexOf('尚未调用') >= 0 ? '' : '<br>') + html; }
 
-    function loadStock() {
-      body.innerHTML = '<div class="card"><div class="card-head"><h3>余票查询（只读）</h3></div>' +
-        '<div class="card-body"><div class="form-grid">' +
-        '  <div class="form-row"><label>车次 ID</label><input class="input" id="adTrain" value="1"></div>' +
-        '  <div class="form-row"><label>乘车日期</label><input class="input" id="adDate" value="2026-09-01"></div>' +
-        '  <div class="form-row"><label>席别</label><input class="input" id="adSeat" value="二等座"></div>' +
-        '</div><button class="btn btn-primary" id="adQuery">查询</button>' +
-        '  <div class="muted" style="margin-top:10px;font-size:12px">后端目前没有放票 / 改库存接口（计划 P2），此页只读。</div>' +
-        '</div><div class="card-body" style="border-top:1px solid var(--line)" id="adResult"></div></div>';
-      document.getElementById('adQuery').onclick = function () {
-        var id = document.getElementById('adTrain').value.trim();
-        var date = document.getElementById('adDate').value.trim();
-        var seat = document.getElementById('adSeat').value.trim();
-        API.ticket.remain(id, date, seat).then(function (n) {
-          document.getElementById('adResult').innerHTML =
-            '车次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) + ' → <b style="color:var(--price);font-size:20px">' + n + ' 张</b>';
+      document.getElementById('pbSubmit').onclick = function () {
+        var v = vals();
+        out.innerHTML = '调用中…';
+        API.admin.publishStock({
+          trainId: Number(v.trainId), travelDate: v.travelDate,
+          seatType: v.seatType, count: Number(v.count)
+        }).then(function (remain) {
+          var ok = remain > 0;
+          out.innerHTML =
+            '<div>' + (ok ? '<span class="tag-real">成功</span>' : '<span class="tag-mock">注意</span>') +
+            '　车次 ' + esc(v.trainId) + '　' + esc(v.travelDate) + '　' + esc(v.seatType) +
+            '　放票 ' + esc(v.count) + ' 张</div>' +
+            '<div style="margin-top:6px;font-size:16px">接口返回的最新余票：<b style="color:var(--price)">' + esc(String(remain)) + '</b></div>' +
+            (ok ? '' : '<div class="muted" style="margin-top:6px;font-size:12px">返回 0 说明 StockService.publish 还没有把 remain 返回出来（见「任务 2-2」）</div>');
         }).catch(function (err) {
-          document.getElementById('adResult').innerHTML = '<span class="muted">查询失败：' + esc(err.message || '') + '</span>';
+          out.innerHTML = '<div><span class="tag-mock">失败</span>　' + esc(err.message || '调用失败') + '</div>' +
+            (err.code === 403 ? '<div class="muted" style="margin-top:6px;font-size:12px">403 = 当前账号不是 ADMIN，请用 admin / admin123 登录</div>' : '');
+        });
+      };
+
+      document.getElementById('pbAfter').onclick = function () {
+        var v = vals();
+        out.innerHTML = '查询中…';
+        API.ticket.remain(v.trainId, v.travelDate, v.seatType).then(function (n) {
+          out.innerHTML = '车次 ' + esc(v.trainId) + '　' + esc(v.travelDate) + '　' + esc(v.seatType) +
+            ' → 当前余票 <b style="color:var(--price);font-size:20px">' + esc(String(n)) + '</b> 张';
+        }).catch(function (err) {
+          out.innerHTML = '<span class="muted">查询失败：' + esc(err.message || '') + '</span>';
         });
       };
     }
 
+    /* ---------------- ② 车次维护 ---------------- */
+    function loadTrains() {
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>车次维护</h3>' +
+        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/train/{trainId}</code> · 改完会清 <code>railway:cache:train::id</code></span></div>' +
+        '<div class="table-wrap"><table class="data-table" id="adTrainTable"></table></div></div>';
+      API.train.page({ page: 1, size: 20 }).then(function (p) {
+        var records = (p && p.records) || [];
+        document.getElementById('adTrainTable').innerHTML =
+          '<tr><th>ID</th><th>车次</th><th>名称（可改）</th><th>始发</th><th>终到</th><th>发车</th><th>到达</th>' +
+          '<th>状态</th><th>操作</th></tr>' +
+          (records.length ? records.map(function (t) {
+            return '<tr><td class="num">' + t.id + '</td>' +
+              '<td><a href="/api/train/' + t.id + '"><b>' + esc(t.trainNo) + '</b></a></td>' +
+              '<td><input class="input" style="height:30px;min-width:150px" id="tn' + t.id + '" value="' + esc(t.trainName || '') + '"></td>' +
+              '<td class="num">' + (t.startStationId || '-') + '</td>' +
+              '<td class="num">' + (t.endStationId || '-') + '</td>' +
+              '<td class="num">' + esc(hm(t.startTime)) + '</td>' +
+              '<td class="num">' + esc(hm(t.endTime)) + '</td>' +
+              '<td><select class="input" style="height:30px" id="ts' + t.id + '">' +
+              '<option value="1"' + (t.status === 1 ? ' selected' : '') + '>运行</option>' +
+              '<option value="0"' + (t.status === 0 ? ' selected' : '') + '>停运</option></select></td>' +
+              '<td><button class="btn btn-outline btn-sm" data-train="' + t.id + '">保存</button></td></tr>';
+          }).join('') : '<tr><td class="muted">没有数据</td></tr>');
+
+        document.getElementById('adTrainTable').querySelectorAll('[data-train]').forEach(function (b) {
+          b.onclick = function () {
+            var id = b.getAttribute('data-train');
+            var name = document.getElementById('tn' + id).value.trim();
+            var status = Number(document.getElementById('ts' + id).value);
+            API.admin.updateTrain(id, { trainName: name, status: status }).then(function () {
+              UI.toast('车次 ' + id + ' 已更新（缓存已清）');
+              API.train.detail(id).then(function (d) {
+                UI.toast('重新读取：' + d.trainName + ' / ' + (d.status === 1 ? '运行' : '停运'));
+              }).catch(function () {});
+            }).catch(function (err) { UI.toast('更新失败：' + (err.message || ''), 'error'); });
+          };
+        });
+      }).catch(function (err) { body.innerHTML = '<div class="card"><div class="empty-state">' + esc(err.message || '') + '</div></div>'; });
+    }
+
+    /* ---------------- ③ 车站维护 ---------------- */
+    function loadStations() {
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>车站维护</h3>' +
+        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/station/{stationId}</code> · 改完清整个 station 缓存</span></div>' +
+        '<div class="table-wrap"><table class="data-table" id="adStationTable"></table></div></div>';
+      API.station.list().then(function (list) {
+        var rows = (list || []);
+        document.getElementById('adStationTable').innerHTML =
+          '<tr><th>ID</th><th>电报码</th><th>站名（可改）</th><th>城市（可改）</th><th>操作</th></tr>' +
+          (rows.length ? rows.map(function (s) {
+            return '<tr><td class="num">' + s.id + '</td><td class="num">' + esc(s.stationCode || '') + '</td>' +
+              '<td><input class="input" style="height:30px;min-width:120px" id="sn' + s.id + '" value="' + esc(s.stationName || '') + '"></td>' +
+              '<td><input class="input" style="height:30px;min-width:120px" id="sc' + s.id + '" value="' + esc(s.city || '') + '"></td>' +
+              '<td><button class="btn btn-outline btn-sm" data-station="' + s.id + '">保存</button></td></tr>';
+          }).join('') : '<tr><td class="muted">没有数据</td></tr>');
+
+        document.getElementById('adStationTable').querySelectorAll('[data-station]').forEach(function (b) {
+          b.onclick = function () {
+            var id = b.getAttribute('data-station');
+            var name = document.getElementById('sn' + id).value.trim();
+            var city = document.getElementById('sc' + id).value.trim();
+            if (!name) { UI.toast('站名不能为空', 'warn'); return; }
+            var body2 = { stationName: name };
+            if (city) { body2.city = city; }
+            API.admin.updateStation(id, body2).then(function () {
+              UI.toast('车站 ' + id + ' 已更新');
+              return API.station.list();
+            }).then(function (fresh) {
+              var hit = (fresh || []).filter(function (x) { return String(x.id) === String(id); })[0];
+              if (hit) { UI.toast('重新读取：' + hit.stationName + ' / ' + hit.city); }
+            }).catch(function (err) { UI.toast('更新失败：' + (err.message || ''), 'error'); });
+          };
+        });
+      }).catch(function (err) { body.innerHTML = '<div class="card"><div class="empty-state">' + esc(err.message || '') + '</div></div>'; });
+    }
+
+    /* ---------------- ④ 余票查询 ---------------- */
+    function loadStock() {
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>余票查询</h3>' +
+        '<span class="muted" style="font-size:12px"><code>GET /api/ticket/remain</code></span></div>' +
+        '<div class="card-body"><div class="form-grid">' +
+        '  <div class="form-row"><label>车次 ID</label><input class="input" id="adTrain" value="1"></div>' +
+        '  <div class="form-row"><label>乘车日期</label><input class="input" id="adDate" value="' + today(1) + '"></div>' +
+        '  <div class="form-row"><label>席别</label><input class="input" id="adSeat" value="二等座"></div>' +
+        '</div><button class="btn btn-primary" id="adQuery">查询</button>' +
+        '  <div class="muted" style="margin-top:10px;font-size:12px">' +
+        '    返回的是 Redis 里的余票（缓存命中则不走库）。返回 0 可能是：<b>没放票</b>、或缓存里存的是空值标记。</div>' +
+        '</div><div class="card-body" style="border-top:1px solid var(--line)" id="adResult"><span class="muted">尚未查询</span></div></div>';
+      document.getElementById('adQuery').onclick = function () {
+        var id = document.getElementById('adTrain').value.trim();
+        var date = document.getElementById('adDate').value.trim();
+        var seat = document.getElementById('adSeat').value.trim();
+        var out = document.getElementById('adResult');
+        out.innerHTML = '查询中…';
+        API.ticket.remain(id, date, seat).then(function (n) {
+          out.innerHTML = '车次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) +
+            ' → <b style="color:var(--price);font-size:20px">' + esc(String(n)) + ' 张</b>';
+        }).catch(function (err) {
+          out.innerHTML = '<span class="muted">查询失败：' + esc(err.message || '') + '</span>';
+        });
+      };
+    }
+
+    /* ---------------- ⑤ 调用日志 ---------------- */
     function loadLogs() {
       var logs = API.logs();
-      body.innerHTML = '<div class="card"><div class="card-head"><h3>接口调用日志</h3></div>' +
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>接口调用日志</h3>' +
+        '<span class="muted" style="font-size:12px">只记录本页面发起的调用</span></div>' +
         '<div class="console" style="margin:0;border-radius:0 0 var(--radius-l) var(--radius-l)">' +
         (logs.length ? logs.map(function (l) {
           return '<div><span class="ts">[' + l.t + ']</span> ' + l.method + ' ' + esc(l.path) +
@@ -716,7 +902,24 @@
     'GET /api/order/my': function () { return API.order.my(); },
     'GET /api/order/{orderNo}': function (v) { return API.order.detail(v.orderNo); },
     'POST /api/order/{orderNo}/cancel': function (v) { return API.order.cancel(v.orderNo); },
-    'GET /api/admin/ping': function () { return API.admin.ping(); }
+    'GET /api/admin/ping': function () { return API.admin.ping(); },
+    'POST /api/admin/stock/publish': function (v) {
+      return API.admin.publishStock({
+        trainId: Number(v.trainId), travelDate: v.travelDate,
+        seatType: v.seatType, count: Number(v.count)
+      });
+    },
+    'PUT /api/admin/train/{trainId}': function (v) {
+      var body = {};
+      if (v.trainName !== '' && v.trainName !== undefined) { body.trainName = v.trainName; }
+      if (v.status !== '' && v.status !== undefined) { body.status = Number(v.status); }
+      return API.admin.updateTrain(v.trainId, body);
+    },
+    'PUT /api/admin/station/{stationId}': function (v) {
+      var body = { stationName: v.stationName };
+      if (v.city) { body.city = v.city; }
+      return API.admin.updateStation(v.stationId, body);
+    }
   };
 
   function consolePage() {
@@ -808,6 +1011,15 @@
       }
       return url;
     }
+    /* 带 bf（body fields）时，只把这些字段放进请求体；
+       不带则用全部字段——避免把路径参数（如 trainId）也塞进 JSON */
+    function bodyOf(ep, v) {
+      if (!ep.body) { return null; }
+      if (!ep.bf) { return v; }
+      var o = {};
+      ep.bf.forEach(function (k) { if (v[k] !== undefined && v[k] !== '') { o[k] = v[k]; } });
+      return o;
+    }
     function print(title, payload) {
       var el = document.getElementById('apiResp');
       el.textContent += '\n\n' + title + '\n' + payload;
@@ -816,7 +1028,7 @@
     function rawCall(ep, index) {
       var v = valuesOf(ep, index);
       var url = buildUrl(ep, v);
-      var body = ep.body ? v : null;
+      var body = bodyOf(ep, v);
       print('→ ' + ep.m + ' ' + url, body ? '请求体：' + JSON.stringify(body) : '');
       var t0 = Date.now();
       API.raw(ep.m, url, body).then(function (r) {
@@ -836,9 +1048,10 @@
     function copyCurl(ep, index) {
       var v = valuesOf(ep, index);
       var url = buildUrl(ep, v);
+      var body = bodyOf(ep, v);
       var cmd = 'curl -i -X ' + ep.m + " 'http://localhost:200" + url + "'";
       if (API.hasToken()) { cmd += " \\\n  -H 'Authorization: Bearer " + API.token() + "'"; }
-      if (ep.body) { cmd += " \\\n  -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify(v) + "'"; }
+      if (body) { cmd += " \\\n  -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify(body) + "'"; }
       if (navigator.clipboard) {
         navigator.clipboard.writeText(cmd).then(function () { UI.toast('curl 已复制'); })
           .catch(function () { UI.toast('复制失败，见下方输出', 'warn'); });

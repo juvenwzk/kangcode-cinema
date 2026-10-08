@@ -8,6 +8,9 @@
      GET  /api/ticket/remain      POST /api/ticket/buy
      GET  /api/order/my           GET  /api/order/{orderNo}   POST /api/order/{orderNo}/cancel
      GET  /api/admin/ping
+     POST /api/admin/stock/publish       放票 / 库存预热
+     PUT  /api/admin/train/{trainId}     车次维护
+     PUT  /api/admin/station/{stationId} 车站维护
    ========================================================================== */
 (function () {
   'use strict';
@@ -95,6 +98,14 @@
     return qs ? '?' + qs : '';
   }
 
+  /* 生成 yyyy-MM-dd（offset 为往后推的天数），给放票表单做默认值 */
+  function dateStr(offset) {
+    var d = new Date();
+    d.setDate(d.getDate() + (offset || 0));
+    var mm = d.getMonth() + 1, dd = d.getDate();
+    return d.getFullYear() + '-' + (mm < 10 ? '0' + mm : mm) + '-' + (dd < 10 ? '0' + dd : dd);
+  }
+
   window.API = {
     endpoints: [
       { g: '认证', m: 'POST', p: '/api/auth/register', auth: false, body: true, d: '注册（注册即登录）',
@@ -121,7 +132,18 @@
       { g: '订单', m: 'POST', p: '/api/order/{orderNo}/cancel', auth: true, d: '取消订单',
         f: [{ k: 'orderNo', v: '' }] },
 
-      { g: '管理端', m: 'GET', p: '/api/admin/ping', auth: true, admin: true, d: '管理员权限校验' }
+      { g: '管理端', m: 'GET', p: '/api/admin/ping', auth: true, admin: true, d: '管理员权限校验' },
+      { g: '管理端', m: 'POST', p: '/api/admin/stock/publish', auth: true, admin: true, body: true,
+        d: '放票 / 库存预热（写 DB + 预热 Redis）',
+        f: [{ k: 'trainId', v: '1' }, { k: 'travelDate', v: dateStr(1) }, { k: 'seatType', v: '二等座' }, { k: 'count', v: '100' }] },
+      { g: '管理端', m: 'PUT', p: '/api/admin/train/{trainId}', auth: true, admin: true, body: true,
+        d: '车次维护（改名 / 停运）',
+        f: [{ k: 'trainId', v: '1' }, { k: 'trainName', v: '北京-上海高铁' }, { k: 'status', v: '1' }],
+        bf: ['trainName', 'status'] },
+      { g: '管理端', m: 'PUT', p: '/api/admin/station/{stationId}', auth: true, admin: true, body: true,
+        d: '车站维护（改名 / 城市）',
+        f: [{ k: 'stationId', v: '1' }, { k: 'stationName', v: '北京' }, { k: 'city', v: '北京' }],
+        bf: ['stationName', 'city'] }
     ],
 
     token: token,
@@ -179,7 +201,22 @@
     },
 
     admin: {
-      ping: function () { return request('GET', '/api/admin/ping'); }
+      ping: function () { return request('GET', '/api/admin/ping'); },
+
+      /** 放票 / 库存预热：{trainId, travelDate, seatType, count} → 返回最新余票 */
+      publishStock: function (payload) {
+        return request('POST', '/api/admin/stock/publish', payload);
+      },
+
+      /** 车次维护：{trainName?, status?} */
+      updateTrain: function (trainId, payload) {
+        return request('PUT', '/api/admin/train/' + encodeURIComponent(trainId), payload);
+      },
+
+      /** 车站维护：{stationName, city?} */
+      updateStation: function (stationId, payload) {
+        return request('PUT', '/api/admin/station/' + encodeURIComponent(stationId), payload);
+      }
     }
   };
 })();

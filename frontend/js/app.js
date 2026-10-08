@@ -10,6 +10,9 @@
      /api/ticket/buy          购票下单              → POST /api/ticket/buy
      /api/order/my            我的订单              → GET  /api/order/my
      /api/admin/ping          管理控制台            → GET  /api/admin/ping
+     /api/admin/stock/publish 管理台·放票页          → POST /api/admin/stock/publish
+     /api/admin/train/{id}    管理台·车次维护页       → PUT  /api/admin/train/{id}
+     /api/admin/station/{id}  管理台·车站维护页       → PUT  /api/admin/station/{id}
      /console                 接口联调控制台（调试页，非后端接口）
    ========================================================================== */
 (function () {
@@ -26,6 +29,9 @@
     { re: /^\/api\/ticket\/buy\/?$/, page: 'booking' },
     { re: /^\/api\/order\/my\/?$/, page: 'orders' },
     { re: /^\/api\/admin\/ping\/?$/, page: 'admin' },
+    { re: /^\/api\/admin\/stock\/publish\/?$/, page: 'admin' },
+    { re: /^\/api\/admin\/train(\/\d+)?\/?$/, page: 'admin' },
+    { re: /^\/api\/admin\/station(\/\d+)?\/?$/, page: 'admin' },
     { re: /^\/console\/?$/, page: 'console' }
   ];
 
