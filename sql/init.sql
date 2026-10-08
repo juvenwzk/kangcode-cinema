@@ -160,3 +160,24 @@ INSERT INTO train_seat (train_id, travel_date, seat_type, total, remain, price) 
 (1, '2026-09-01', '二等座', 500, 500, 55300),
 (1, '2026-09-01', '一等座', 100, 100, 93300),
 (1, '2026-09-01', '商务座', 20, 20, 174800);
+
+-- ============================================================
+-- 演示账号（与前端登录页提示的账号一致）
+--   demo  / 123456     普通用户
+--   admin / admin123   管理员
+--
+-- 密码字段存的是 Hutool BCrypt 密文，与 AuthServiceImpl 里的
+-- BCrypt.checkpw(明文, 密文) 兼容。
+-- 用 INSERT IGNORE，重复导入不会因唯一索引报错。
+-- ============================================================
+INSERT IGNORE INTO sys_user (username, password, nickname, status) VALUES
+('demo',  '$2a$10$MQgsti2JMFxnKWqkus.NF.Mg3W9hzWs5uMoMpe7OFy8HX.B9iY4Ue', '演示账号',   1),
+('admin', '$2a$10$BHbYymQ0nZgDocr9V9UxiOFCcAt9dUNuzkE6JIX.OIKKpVpyBHjOy', '系统管理员', 1);
+
+-- 绑定角色：按 role_code 关联，不写死 id（避免自增顺序变化导致绑错）
+INSERT IGNORE INTO sys_user_role (user_id, role_id)
+SELECT u.id, r.id
+FROM sys_user u
+JOIN sys_role r
+WHERE (u.username = 'demo'  AND r.role_code = 'USER')
+   OR (u.username = 'admin' AND r.role_code = 'ADMIN');

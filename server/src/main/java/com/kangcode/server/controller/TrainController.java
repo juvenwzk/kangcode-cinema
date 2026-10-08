@@ -30,6 +30,7 @@ public class TrainController {
 
     @GetMapping("/{id}")
     public Result<TrainVO> detail(@PathVariable Long id) {
+
         return Result.ok(trainService.getTrainDetail(id));
     }
 }

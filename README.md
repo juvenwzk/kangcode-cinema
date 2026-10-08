@@ -115,7 +115,7 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 
 - [x] Maven 多模块工程与依赖管理
 - [x] 配置文件（MySQL / Redis / Spring Cache / Redisson / RabbitMQ / JWT）
-- [x] Docker Compose 与 SQL 初始化脚本（9 张表 + 演示数据，**不含账号**）
+- [x] Docker Compose 与 SQL 初始化脚本（9 张表 + 演示数据 + **2 个演示账号**）
 - [x] 实体 / Mapper / Service / Controller 骨架
 - [x] 认证与权限（JWT + 拦截器 + `UserContext`，样例已跑通）
 - [x] 余票缓存（空值防穿透 / 互斥重建防击穿 / TTL 抖动防雪崩）
@@ -130,9 +130,43 @@ java -jar server/target/server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 
 > 项目已初始化 git：`main` 为准备工程基线，`impl-baseline` 保存了回退前的 P2 完整实现，
 > 需要参考时用 `git diff main impl-baseline` 或 `git show impl-baseline:<文件路径>`。
->
-> 账号需自行注册（`sql/init.sql` 不含账号）；需要管理端权限时手动绑定 `ADMIN` 角色并**重新登录**，
-> 详见 [开发计划.md](开发计划.md) 第 8.3 节。
+
+## 演示账号
+
+`sql/init.sql` 会插入这两个账号，与前端登录页提示的一致：
+
+| 账号 | 密码 | 角色 | 管理端权限 |
+| --- | --- | --- | --- |
+| `demo` | `123456` | USER | ❌ 403 |
+| `admin` | `admin123` | ADMIN | ✅ 可访问 `/api/admin/**` |
+
+> 也可以自己注册新账号（只会有 USER 角色）；需要 ADMIN 时手动绑定角色并**重新登录**
+> （角色写在 JWT 里），详见 [开发计划.md](开发计划.md) 第 8.3 节。
+
+## 启动顺序（重要）
+
+本项目前端由 **nginx（200 端口）** 托管，`/api` 请求由 nginx **反代到后端 8080**：
+
+```
+浏览器 → nginx:200 ─┬─ 静态文件 → frontend/ 目录
+                    └─ /api/**  → 反向代理 → Spring Boot:8080
+```
+
+所以**必须先启动后端，前端才能正常调接口**，否则页面能打开但所有接口都返回 **502 Bad Gateway**。
+
+```powershell
+# 1. 先启动后端（8080）
+java -jar server\target\server-1.0.0-SNAPSHOT.jar
+
+# 2. nginx 若没在跑，启动它（nginx.conf 里 proxy_pass 必须指向 8080）
+cd C:\nginx-1.30.0\nginx-1.30.0
+.\nginx.exe
+
+# 3. 访问前端
+#    http://localhost:200/
+```
+
+> 502 的排查方法见 [开发计划.md](开发计划.md) 第 10.2 节和「坑 10」。
 
 ## 说明
 
