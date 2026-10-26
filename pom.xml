@@ -9,8 +9,8 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>KangRail</name>
-    <description>康轨 KangRail - 高并发铁路购票系统</description>
+    <name>MovieTicket</name>
+    <description>影票 MovieTicket - 电影票购票系统</description>
 
     <modules>
         <module>common</module>

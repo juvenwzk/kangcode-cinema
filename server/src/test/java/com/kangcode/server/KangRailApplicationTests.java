@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  */
 @Disabled("需要 MySQL/Redis/RabbitMQ 就绪后手动开启")
 @SpringBootTest
-class KangRailApplicationTests {
+class MovieTicketApplicationTests {
 
     @Test
     void contextLoads() {

@@ -4,6 +4,16 @@ target/
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
 
+# ===== 前端 =====
+node_modules/
+dist/
+.vite/
+*.local
+
+# ===== Python =====
+__pycache__/
+*.pyc
+
 # ===== IDE =====
 .idea/
 *.iml

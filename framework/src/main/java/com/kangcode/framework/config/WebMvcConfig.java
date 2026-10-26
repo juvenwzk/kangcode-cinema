@@ -21,6 +21,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 // 业务接口需要登录
                 .addPathPatterns("/api/**")
                 // 登录/注册放行
-                .excludePathPatterns("/api/auth/login", "/api/auth/register","/api/pay/callback", "/error");
+                .excludePathPatterns("/api/auth/login", "/api/auth/register","/api/pay/callback", "/error")
+                // 浏览类只读接口放行：影院/场次/票种余票，未登录也能看；下单、订单仍要登录
+                .excludePathPatterns("/api/cinema/**", "/api/screening/**");
     }
 }

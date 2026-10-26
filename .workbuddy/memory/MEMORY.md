@@ -18,6 +18,25 @@
   直接决定怎么写，占位符等于把活推回给用户。
 - 只有**纯技术产出**（文档、代码、报告）才适合先做再问；个人信息类一律先问。
 
+## 领域模型（2026-10-26 起：电影票）
+
+项目已从「铁路售票」全链路改名为「电影票购票」，**逻辑未变**。写代码/文档请用新口径：
+
+| 概念 | 表名 | 关键字段 |
+| --- | --- | --- |
+| 影院 | `cinema` | cinema_code / cinema_name / city |
+| 场次 | `screening` | screening_no / movie_name / cinema_id / hall_id / start_time / end_time |
+| 影厅 | `hall` | screening_id / cinema_id / hall_no / open_time / close_time / cleanup_minutes / row_count |
+| 票种库存 | `screening_seat` | screening_id / show_date / ticket_type / total / remain / price |
+| 订单 | `movie_order` | order_no / screening_id / show_date / cinema_id / hall_id / ticket_type |
+| 订单明细 | `movie_order_item` | order_id / passenger_name / id_card_no / seat_no |
+
+- 接口路径：`/api/screening/**`、`/api/cinema/**`
+- Redis：`screening:stock:*`、`screening:lock:*`
+- MQ：`movie.order.create.queue` 等
+- 票种示例：普通票 / 学生票 / IMAX厅票
+- **真·选座（座位图/锁座）尚未实现**，明细里的 `seat_no` 仅预留
+
 ## 技术约定
 
 - 统一 JDK 17 编译（`C:\Users\王照康\.jdks\jdk-17.0.2`）；构建用 JDK 21 + Maven 3.9.16 也可。

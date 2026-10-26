@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class orderTimeoutConsumer {
+public class OrderTimeoutConsumer {
 
 
     private final OrderService orderService;
