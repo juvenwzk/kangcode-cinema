@@ -7,6 +7,7 @@ import com.kangcode.common.core.ResultCode;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * JWT 登录拦截器
@@ -33,6 +35,16 @@ public class JwtInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
+        // ===== 生成 traceId 并放进 MDC（后面每一行日志都会自动带上它）=====
+        // 必须放在最开头：放在后面的话，前面几行日志就没有 traceId；OPTIONS 预检也应带上。
+        // 优先用上游（网关/前端）传来的，没有就自己生成 8 位。
+        String traceId = request.getHeader("X-Trace-Id");
+        if (!StringUtils.hasText(traceId)) {
+            traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        }
+        MDC.put("traceId", traceId);
+        // ================================================================
+
         // 预检请求直接放行
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
@@ -68,6 +80,7 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        MDC.clear();            // 不清的话，线程被复用时会串号
         UserContext.clear();
     }
 

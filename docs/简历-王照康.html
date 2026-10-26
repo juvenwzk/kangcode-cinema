@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>王照康 · Java 后端开发实习生</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ink: #1f2328;
+    --ink-2: #4a5259;
+    --ink-3: #7a838c;
+    --line: #e3e6ea;
+    --accent: #0b5fb0;
+  }
+
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.66;
+    color: var(--ink);
+    background: #f2f4f6;
+    padding: 24px 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    padding: 16mm 15mm 14mm;
+    box-shadow: 0 2px 16px rgba(31, 35, 40, .1);
+  }
+
+  /* ---------- 头部 ---------- */
+  .name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 8px;
+  }
+  .name {
+    font-size: 23pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+  }
+  .target {
+    font-size: 11pt;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .contact {
+    margin-top: 9px;
+    font-size: 9.5pt;
+    color: var(--ink-2);
+  }
+  .contact span { margin-right: 22px; white-space: nowrap; }
+  .contact b { color: var(--ink); font-weight: 600; }
+  .availability {
+    margin-top: 4px;
+    font-size: 9.5pt;
+    color: var(--ink-3);
+  }
+
+  /* ---------- 区块 ---------- */
+  section { margin-top: 16px; }
+
+  h2 {
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding-left: 8px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .row .left { font-weight: 600; }
+  .row .right { color: var(--ink-3); font-size: 9.5pt; white-space: nowrap; }
+  .sub { color: var(--ink-2); font-size: 10pt; font-weight: 400; }
+
+  .project-title {
+    font-weight: 700;
+    font-size: 11pt;
+    color: var(--accent);
+  }
+  .stack {
+    font-size: 9.5pt;
+    color: var(--ink-2);
+    margin: 4px 0 3px;
+    text-align: justify;
+  }
+  .stack b { color: var(--ink); font-weight: 600; }
+
+  ul { list-style: none; margin-top: 4px; }
+  li {
+    position: relative;
+    padding-left: 13px;
+    margin-bottom: 4.5px;
+    text-align: justify;
+  }
+  li::before {
+    content: "";
+    position: absolute;
+    left: 2px; top: .7em;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 9pt;
+    background: #f3f5f7;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #24303c;
+  }
+  strong { font-weight: 600; }
+  .num { font-weight: 700; color: var(--accent); }
+
+  .skills li { margin-bottom: 3px; }
+  .skills b { font-weight: 600; color: var(--ink); }
+
+  .hint {
+    width: 210mm;
+    margin: 0 auto 10px;
+    font-size: 10pt;
+    color: #6b7280;
+    background: #fffbe8;
+    border: 1px solid #f0e2b6;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    body { background: #fff; padding: 0; }
+    .page { box-shadow: none; width: auto; min-height: auto; padding: 14mm 15mm; }
+    .hint { display: none; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">
+  打印：Ctrl+P → 目标打印机选「另存为 PDF」→ 边距「无」→ 勾选「背景图形」。这一行不会打印。
+</div>
+
+<div class="page">
+
+  <div class="name-row">
+    <div class="name">王照康</div>
+    <div class="target">求职意向：Java 后端开发实习生</div>
+  </div>
+  <div class="contact">
+    <span><b>13071371971</b></span>
+    <span>2118188272@qq.com</span>
+    <span>广州</span>
+    <span>GitHub：github.com/juvenwzk</span>
+  </div>
+  <div class="availability">每周可到岗 5 天，可连续实习 6 个月以上</div>
+
+  <section>
+    <h2>教育经历</h2>
+    <div class="row">
+      <div class="left">广东白云学院　<span class="sub">计算机科学与技术　本科</span></div>
+      <div class="right">2024.09 - 2028.06</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>项目经历</h2>
+
+    <div class="row">
+      <div class="project-title">铁路购票系统 · 高并发余票扣减与一致性</div>
+      <div class="right">个人项目　2026.03 - 2026.10</div>
+    </div>
+    <div class="stack">
+      <b>技术栈</b>：Java 17 · Spring Boot 2.7 · MyBatis-Plus · MySQL 8 · Redis · Redisson · RabbitMQ · nginx
+    </div>
+    <div class="stack">
+      <b>项目描述</b>：车次查询、下单、支付、退票完整闭环，重点解决高并发扣减与异步一致性。
+    </div>
+
+    <ul>
+      <li><strong>防超卖四层防护</strong>：同一用户 30 秒幂等键 → Redisson 分布式锁（粒度：车次 + 日期 + 席别）→
+        Redis Lua 原子判断并预扣 → MySQL <code>WHERE remain &gt;= n</code> 兜底；
+        12 / 15 人并发抢 10 张票，账目全部对平，<span class="num" style="white-space:nowrap">无超卖、无负库存</span>。</li>
+
+      <li><strong>缓存三兄弟</strong>：空值缓存（60s）防穿透、互斥重建锁防击穿、TTL 600s + 0~60s 抖动防雪崩；
+        关掉任一机制，50 次请求的数据库访问由 <span class="num">5 次升至 54 次（10.8 倍）</span>。</li>
+
+      <li><strong>异步最终一致</strong>：下单接口只做「预扣 + 发 MQ」，订单与明细落库、DB 库存扣减交给消费者；
+        TTL + 死信队列实现 30 分钟未支付自动关单并回补库存，配 5 分钟对账修正偏差。</li>
+
+      <li><strong>订单状态机</strong>：0 待支付 → 1 已支付 → 4 已退票，0 → 2 已取消；所有流转用<strong>带源状态条件的 UPDATE + 影响行数判断</strong>，
+        避免「先查后改」的并发窗口，天然获得支付回调与重复退票的幂等性。</li>
+
+      <li><strong>性能</strong>：缓存命中时 <span class="num">1000 次余票查询仅 4 次落库</span>（挡掉 99.6%）；
+        20 并发 <span class="num">1430 QPS / P99 32ms</span>，100 并发 0 错误。</li>
+
+      <li><strong>工程</strong>：traceId 全链路可追踪，Actuator 一键确认三件中间件连通；
+        <span class="num">45 个 Mockito 单测</span>覆盖幂等、锁竞争与非法状态流转。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>专业技能</h2>
+    <ul class="skills">
+      <li><b>Java 基础</b>：熟悉面向对象、集合框架、异常体系、泛型；了解反射与注解的使用场景。</li>
+      <li><b>框架</b>：熟悉 Spring Boot、Spring MVC、MyBatis-Plus；理解 IoC/AOP、拦截器与过滤器的区别、
+        <code>@Transactional</code> 的传播行为与失效场景。</li>
+      <li><b>MySQL</b>：熟悉索引原理（B+ 树、聚簇/二级索引、覆盖索引、最左前缀）、事务隔离级别与 MVCC，能用 <code>EXPLAIN</code> 分析执行计划。</li>
+      <li><b>Redis</b>：熟悉常用数据结构与适用场景；掌握缓存穿透 / 击穿 / 雪崩的成因与对应方案；
+        能使用 Redisson 实现分布式锁、用 Lua 脚本保证「判断 + 扣减」的原子性。</li>
+      <li><b>RabbitMQ</b>：熟悉异步解耦、TTL + 死信队列实现延时任务；理解至少一次投递语义，能处理重复消费与消息可靠性问题。</li>
+      <li><b>并发</b>：了解线程池核心参数与拒绝策略、<code>synchronized</code> 锁升级、<code>volatile</code> 语义、CAS 与 AQS 基本原理。</li>
+      <li><b>JVM</b>：了解内存区域划分、对象创建过程、GC 分代与 G1、类加载与双亲委派模型。</li>
+      <li><b>工具</b>：Git、Maven（多模块）、Docker Compose、nginx 反向代理、Linux 常用命令。</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

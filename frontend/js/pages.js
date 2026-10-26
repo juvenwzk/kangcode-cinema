@@ -17,6 +17,17 @@
   };
   var TYPE_NAME = { G: '高铁 G', D: '动车 D', Z: '直达 Z', T: '特快 T', K: '快速 K' };
 
+  /* 首页快捷入口用的线性图标（内联 SVG，和顶部 logo 同一风格） */
+  var ICON = {
+    train: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14M9 3v7M15 3v7M8 19l-2 2M16 19l2 2M9 16v3M15 16v3"/></svg>',
+    station: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.4 7-11a7 7 0 1 0-14 0c0 4.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+    ticket: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M12 7v10"/></svg>',
+    order: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>',
+    user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+    admin: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 4.4-3.4 7.5-8 8-4.6-.5-8-3.6-8-8V7z"/><path d="M9 12l2 2 4-4"/></svg>',
+    console: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg>'
+  };
+
   /* ---------------- 工具 ---------------- */
   function param(name) {
     var v = new URLSearchParams(location.search).get(name);
@@ -77,10 +88,25 @@
      /　首页：查询入口
      ====================================================================== */
   function home() {
-    var hot = [['北京', '上海'], ['广州', '北京']];
     app.innerHTML =
       '<div class="page">' +
-      '  <div class="search-panel" style="margin-bottom:22px">' +
+
+      /* ---- Hero 品牌区 ---- */
+      '  <div class="hero">' +
+      '    <h1>康轨 KangRail · 铁路客票服务</h1>' +
+      '    <p>高并发购票系统演示 —— Redis 原子预扣、Redisson 分布式锁、RabbitMQ 异步落库。' +
+      '       下面的每一个页面都在<b>真实调用后端接口</b>，不是静态原型。</p>' +
+      '    <div class="hero-tags">' +
+      '      <span class="hero-tag">Spring Boot 2.7</span>' +
+      '      <span class="hero-tag">JWT 鉴权</span>' +
+      '      <span class="hero-tag">Redis + Lua 预扣</span>' +
+      '      <span class="hero-tag">RabbitMQ 异步落库</span>' +
+      '      <span class="hero-tag">不超卖</span>' +
+      '    </div>' +
+      '  </div>' +
+
+      /* ---- 查询面板 ---- */
+      '  <div class="search-panel" style="margin-bottom:20px">' +
       '    <div class="search-main">' +
       '      <div class="station-field"><label>出发地</label>' +
       '        <input id="fromCity" value="北京" placeholder="城市名" autocomplete="off">' +
@@ -93,25 +119,59 @@
       '    </div>' +
       '    <div class="date-strip" id="dateStrip"></div>' +
       '  </div>' +
-      '  <div class="card" style="margin-bottom:22px">' +
-      '    <div class="card-head"><h3>快捷入口（每个入口对应一个后端接口）</h3></div>' +
-      '    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap">' +
-      '      <a class="btn btn-default btn-sm" href="/api/train/page">车次列表　GET /api/train/page</a>' +
-      '      <a class="btn btn-default btn-sm" href="/api/station/list">车站列表　GET /api/station/list</a>' +
-      '      <a class="btn btn-default btn-sm" href="/api/ticket/remain">余票查询　GET /api/ticket/remain</a>' +
-      '      <a class="btn btn-default btn-sm" href="/api/order/my">我的订单　GET /api/order/my</a>' +
-      '      <a class="btn btn-default btn-sm" href="/api/user/me">个人中心　GET /api/user/me</a>' +
-      '      <a class="btn btn-default btn-sm" href="/api/admin/ping">管理控制台　GET /api/admin/ping</a>' +
-      '      <a class="btn btn-default btn-sm" href="/console">接口联调控制台</a>' +
+
+      /* ---- 快捷入口（卡片网格）---- */
+      '  <div class="card" style="margin-bottom:20px">' +
+      '    <div class="card-head"><h3>快捷入口</h3>' +
+      '      <span class="muted" style="font-size:12px">每个入口对应一个后端接口</span></div>' +
+      '    <div class="card-body">' +
+      '      <div class="entry-grid">' +
+      '        <a class="entry-card" href="/api/train/page">' +
+      '          <span class="entry-icon">' + ICON.train + '</span>' +
+      '          <span><span class="entry-title">车次查询</span>' +
+      '          <span class="entry-desc">GET /api/train/page</span></span></a>' +
+      '        <a class="entry-card" href="/api/station/list">' +
+      '          <span class="entry-icon">' + ICON.station + '</span>' +
+      '          <span><span class="entry-title">车站列表</span>' +
+      '          <span class="entry-desc">GET /api/station/list</span></span></a>' +
+      '        <a class="entry-card" href="/api/ticket/remain">' +
+      '          <span class="entry-icon">' + ICON.ticket + '</span>' +
+      '          <span><span class="entry-title">余票查询</span>' +
+      '          <span class="entry-desc">GET /api/ticket/remain</span></span></a>' +
+      '        <a class="entry-card" href="/api/order/my">' +
+      '          <span class="entry-icon">' + ICON.order + '</span>' +
+      '          <span><span class="entry-title">我的订单</span>' +
+      '          <span class="entry-desc">GET /api/order/my</span></span></a>' +
+      '        <a class="entry-card" href="/api/user/me">' +
+      '          <span class="entry-icon">' + ICON.user + '</span>' +
+      '          <span><span class="entry-title">个人中心</span>' +
+      '          <span class="entry-desc">GET /api/user/me</span></span></a>' +
+      '        <a class="entry-card" href="/api/admin/ping">' +
+      '          <span class="entry-icon">' + ICON.admin + '</span>' +
+      '          <span><span class="entry-title">管理控制台</span>' +
+      '          <span class="entry-desc">GET /api/admin/ping</span></span></a>' +
+      '        <a class="entry-card" href="/console">' +
+      '          <span class="entry-icon">' + ICON.console + '</span>' +
+      '          <span><span class="entry-title">接口联调控制台</span>' +
+      '          <span class="entry-desc">17 个接口一把梭</span></span></a>' +
+      '      </div>' +
       '    </div>' +
       '  </div>' +
+
+      /* ---- 演示数据一览（换成卡片式的）---- */
       '  <div class="card"><div class="card-body">' +
-      '    <div style="font-weight:600;margin-bottom:6px">当前后端数据</div>' +
-      '    <div class="muted" style="line-height:1.9">车站表 5 条（北京 / 济南 / 南京 / 上海 / 广州）；' +
-      '    车次表 2 条（G1001 北京→上海、G1002 广州→北京）；座位库存为 2026-09-01 的数据。</div>' +
+      '    <div class="stat-row">' +
+      '      <div class="stat-box"><div class="k">车站表</div><div class="v">5 条</div></div>' +
+      '      <div class="stat-box"><div class="k">车次表</div><div class="v">2 条</div></div>' +
+      '      <div class="stat-box"><div class="k">线路</div><div class="v">北京 ⇄ 上海 / 广州</div></div>' +
+      '      <div class="stat-box"><div class="k">演示日期</div><div class="v">2026-09-01</div></div>' +
+      '    </div>' +
+      '    <div class="tip">数据来自本机 MySQL 的 <b>railway</b> 库。' +
+      '      想看到变化，先用「管理控制台 → 放票」给某天放几张票，再来查余票。</div>' +
       '  </div></div>' +
       '</div>';
 
+    /* ===== 以下逻辑与原来完全一致（只改了上面的 HTML 结构）===== */
     var strip = document.getElementById('dateStrip');
     var labels = ['今天', '明天', '后天'];
     var names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -140,7 +200,6 @@
       if (!from || !to) { UI.toast('请填写出发地和到达地', 'error'); return; }
       App.navigate('/api/train/page' + API.query({ from: from, to: to, date: date }));
     };
-    hot.forEach(function () { /* 热门线路仅作展示 */ });
   }
 
   /* ======================================================================
@@ -466,9 +525,11 @@
       '      <div class="form-row"><label>乘车日期</label><input class="input" id="bkDate" value="' + esc(travelDate) + '"></div>' +
       '      <div class="form-row"><label>席别</label><input class="input" id="bkSeat" value="' + esc(seatType || '二等座') + '"></div>' +
       '      <div class="form-row"><label>购票数量（1~5）</label><input class="input" id="bkCount" value="' + esc(count) + '"></div>' +
+      '      <div class="form-row"><label>乘客姓名（可选）</label><input class="input" id="bkPassenger" placeholder="不填则记为「乘客」"></div>' +
+      '      <div class="form-row"><label>证件号（可选）</label><input class="input" id="bkIdCard" placeholder="不填则留空"></div>' +
       '    </div>' +
-      '    <div class="hint-box">后端 TicketBuyRequest 只接受 trainId、travelDate、seatType、ticketCount 四个字段，' +
-      '    所以下单页只提交这四个参数（乘客明细接口后端尚未提供）。</div>' +
+      '    <div class="hint-box">后端接受 trainId、travelDate、seatType、ticketCount，以及可选的 passengerName、idCardNo；' +
+      '    乘客信息会写入订单明细表 train_order_item。</div>' +
       '    <button class="btn btn-buy btn-lg" style="width:100%;margin-top:14px" id="bkSubmit">提交订单</button>' +
       '  </div>' +
       '  <div class="card-body" style="border-top:1px solid var(--line)" id="bkResult"></div></div>' +
@@ -483,6 +544,10 @@
         seatType: document.getElementById('bkSeat').value.trim(),
         ticketCount: Number(document.getElementById('bkCount').value.trim())
       };
+      var pName = document.getElementById('bkPassenger').value.trim();
+      var pId = document.getElementById('bkIdCard').value.trim();
+      if (pName) { payload.passengerName = pName; }
+      if (pId) { payload.idCardNo = pId; }
       var out = document.getElementById('bkResult');
       var rawBox = document.getElementById('bkRaw');
       rawBox.textContent = 'POST /api/ticket/buy\n请求体：' + JSON.stringify(payload) + '\n\n请求中…';
@@ -494,23 +559,11 @@
       });
 
       API.ticket.buy(payload).then(function (data) {
-        /* ⚠️ 后端 TicketServiceImpl.buy() 目前还是 TODO（return null），
-           Controller 会把这个 null 包成 Result.ok(null) —— 也就是 HTTP 200 + code 200 + data null。
-           如果直接当成功处理，会显示「下单成功」但数据库里根本没有订单。
-           所以这里必须判断 data 里有没有订单号。 */
+        // 防御：正常应返回 orderNo；为空说明后端异常，不能误报「下单成功」
         if (!data || !data.orderNo) {
           out.innerHTML = '<div style="line-height:1.9">' +
-            '<span style="color:var(--price);font-weight:600">下单未生效</span>' +
-            '<div class="muted" style="margin-top:8px">' +
-            '  后端返回了 <b>HTTP 200 / code 200</b>，但 <code>data</code> 是空的。<br>' +
-            '  说明 <code>TicketServiceImpl.buy()</code> 还是占位实现（<code>return null</code>），<b>并没有真的创建订单</b>。' +
-            '</div>' +
+            '<span style="color:var(--red);font-weight:600">下单异常：后端没有返回订单号</span>' +
             '<div class="muted" style="margin-top:6px;font-size:12px">原始返回：<code>' + esc(JSON.stringify(data)) + '</code></div>' +
-            '<div style="margin-top:10px">' +
-            '  这块属于 <b>P3（幂等键 → Redisson 锁 → Lua 原子预扣 → MQ 异步落库）</b>。' +
-            '  实现之后本页面无需任何改动，就能正常下单。' +
-            '</div>' +
-            '<div style="margin-top:10px"><a class="btn btn-outline btn-sm" href="/api/ticket/remain">先去看余票</a></div>' +
             '</div>';
           return;
         }
@@ -523,7 +576,7 @@
       }).catch(function (err) {
         out.innerHTML = '<div style="color:var(--red);line-height:1.9">下单失败：' + esc(err.message || '') +
           (err.code === 401 ? '<br><a href="/api/auth/login">去登录</a>' : '') +
-          '<div class="muted" style="margin-top:6px">提示：后端 TicketServiceImpl.buy 目前还是 TODO（P3 实现），会返回 500/空结果。</div></div>';
+          '</div>';
       });
     };
   }
@@ -544,7 +597,7 @@
 
     API.order.my().then(function (list) {
       list = list || [];
-      var tabs = [{ v: 'ALL', n: '全部' }, { v: 0, n: '待支付' }, { v: 1, n: '已支付' }, { v: 2, n: '已取消' }, { v: 4, n: '已退票' }];
+      var tabs = [{ v: 'ALL', n: '全部' }, { v: 0, n: '待支付' }, { v: 1, n: '已支付' }, { v: 2, n: '已取消' }, { v: 3, n: '已出票' }, { v: 4, n: '已退票' }];
       document.getElementById('orderTabs').innerHTML = tabs.map(function (t) {
         var n = t.v === 'ALL' ? list.length : list.filter(function (o) { return Number(o.status) === t.v; }).length;
         return '<button data-v="' + t.v + '" class="' + (String(tab) === String(t.v) ? 'on' : '') + '">' + t.n + ' (' + n + ')</button>';
@@ -561,25 +614,23 @@
           var no = b.getAttribute('data-no'), act = b.getAttribute('data-act');
           var order = list.filter(function (o) { return o.orderNo === no; })[0];
           if (act === 'cancel') {
-            UI.confirm('确认取消订单 ' + no + '？', function () {
-              var before = order ? String(order.status) : null;
+            UI.confirm('确认取消订单 ' + no + '？取消后库存会返还。', function () {
               API.order.cancel(no).then(function () {
-                /* OrderServiceImpl.cancel() 目前是空实现：不报错、也不改状态。
-                   所以调用后重新查一次，用「状态有没有变」来判断是否真的生效。 */
-                return API.order.detail(no);
-              }).then(function (fresh) {
-                if (fresh && before !== null && String(fresh.status) === before) {
-                  UI.toast('接口返回成功，但订单状态没变 —— cancel() 还是 TODO（P3/P4）', 'warn');
-                } else {
-                  UI.toast('订单已取消');
-                }
+                UI.toast('订单已取消，库存已返还');
                 App.route();
               }).catch(function (err) { UI.toast('取消失败：' + (err.message || ''), 'error'); });
             });
           }
           if (act === 'detail') { orderDetail(order); }
           if (act === 'pay') { UI.payModal(order); }
-          if (act === 'refund') { UI.toast('退票接口后端尚未提供（计划 P4）', 'warn'); }
+          if (act === 'refund') {
+            UI.confirm('确认对订单 ' + no + ' 办理退票？退票后库存会返还，且不可撤销。', function () {
+              API.order.refund(no).then(function () {
+                UI.toast('退票成功，库存已返还');
+                App.route();
+              }).catch(function (err) { UI.toast('退票失败：' + (err.message || ''), 'error'); });
+            });
+          }
         };
       });
       startCountdown();

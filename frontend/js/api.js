@@ -6,7 +6,9 @@
      GET  /api/station/list
      GET  /api/train/page         GET  /api/train/{id}
      GET  /api/ticket/remain      POST /api/ticket/buy
-     GET  /api/order/my           GET  /api/order/{orderNo}   POST /api/order/{orderNo}/cancel
+     GET  /api/order/my           GET  /api/order/{orderNo}
+     POST /api/order/{orderNo}/cancel     取消订单（仅待支付）
+     POST /api/order/{orderNo}/refund     退票（仅已支付/已出票）
      GET  /api/admin/ping
      POST /api/admin/stock/publish       放票 / 库存预热
      PUT  /api/admin/train/{trainId}     车次维护
@@ -129,8 +131,14 @@
       { g: '订单', m: 'GET', p: '/api/order/my', auth: true, d: '我的订单' },
       { g: '订单', m: 'GET', p: '/api/order/{orderNo}', auth: true, d: '订单详情',
         f: [{ k: 'orderNo', v: '' }] },
-      { g: '订单', m: 'POST', p: '/api/order/{orderNo}/cancel', auth: true, d: '取消订单',
+      { g: '订单', m: 'POST', p: '/api/order/{orderNo}/cancel', auth: true, d: '取消订单（仅待支付）',
         f: [{ k: 'orderNo', v: '' }] },
+      { g: '订单', m: 'POST', p: '/api/order/{orderNo}/refund', auth: true, d: '退票（仅已支付/已出票）',
+        f: [{ k: 'orderNo', v: '' }] },
+
+      { g: '支付', m: 'POST', p: '/api/pay/callback', auth: false, body: true,
+        d: '支付回调（模拟第三方支付平台，免登录）',
+        f: [{ k: 'orderNo', v: '' }, { k: 'payNo', v: 'PAY' + Date.now() }] },
 
       { g: '管理端', m: 'GET', p: '/api/admin/ping', auth: true, admin: true, d: '管理员权限校验' },
       { g: '管理端', m: 'POST', p: '/api/admin/stock/publish', auth: true, admin: true, body: true,
@@ -197,7 +205,20 @@
     order: {
       my: function () { return request('GET', '/api/order/my'); },
       detail: function (orderNo) { return request('GET', '/api/order/' + encodeURIComponent(orderNo)); },
-      cancel: function (orderNo) { return request('POST', '/api/order/' + encodeURIComponent(orderNo) + '/cancel'); }
+      /** 取消订单：只有「待支付」能取消，成功后后端会异步释放库存 */
+      cancel: function (orderNo) { return request('POST', '/api/order/' + encodeURIComponent(orderNo) + '/cancel'); },
+      /** 退票：只有「已支付(1) / 已出票(3)」能退，状态改为「已退票(4)」并释放库存 */
+      refund: function (orderNo) { return request('POST', '/api/order/' + encodeURIComponent(orderNo) + '/refund'); }
+    },
+
+    /** 支付回调（模拟第三方支付平台）——后端把订单从「待支付」改为「已支付」 */
+    pay: {
+      callback: function (orderNo, payNo) {
+        return request('POST', '/api/pay/callback', {
+          orderNo: orderNo,
+          payNo: payNo || ('PAY' + Date.now())
+        });
+      }
     },
 
     admin: {

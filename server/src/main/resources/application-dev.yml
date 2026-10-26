@@ -4,10 +4,10 @@ spring:
     username: root
     password: 123456
   redis:
-    # Redis 与 youmall 使用同一套远程服务
-    host: 43.166.0.94
+    host: localhost
     port: 6379
-    password: "123456"
+    # 该 Redis 未启用密码认证（若哪天加了密码，在这里填上）
+    password:
   rabbitmq:
     # RabbitMQ 与 youmall 使用同一套远程服务
     host: 43.166.0.94

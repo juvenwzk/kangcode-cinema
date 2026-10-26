@@ -17,4 +17,5 @@ public final class MqConstant {
     /** 取消订单释放库存 */
     public static final String STOCK_RELEASE_QUEUE = "railway.stock.release.queue";
 
+    public static final String ORDER_DELAY_QUEUE = "railway.order.delay.queue";
 }

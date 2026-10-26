@@ -34,4 +34,13 @@ public final class RedisKeyConstant {
     public static String userTokenKey(Long userId) {
         return USER_TOKEN_PREFIX + userId;
     }
+
+    /** 下单幂等键：order:dup:{userId}:{trainId}:{travelDate} */
+    public static String orderDupKey(Long userId, Long trainId, String travelDate) {
+        return ORDER_DUP_PREFIX + userId + ":" + trainId + ":" + travelDate;
+    }
+
+    public static String orderSeqKey(String day) {
+        return ORDER_SEQ_PREFIX + day;
+    }
 }

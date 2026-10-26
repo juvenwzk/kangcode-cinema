@@ -21,6 +21,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 // 业务接口需要登录
                 .addPathPatterns("/api/**")
                 // 登录/注册放行
-                .excludePathPatterns("/api/auth/login", "/api/auth/register", "/error");
+                .excludePathPatterns("/api/auth/login", "/api/auth/register","/api/pay/callback", "/error");
     }
 }

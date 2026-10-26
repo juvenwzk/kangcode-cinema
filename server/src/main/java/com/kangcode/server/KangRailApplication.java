@@ -4,16 +4,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 康轨 KangRail 高并发铁路购票系统 启动类
  *
- * <p>准备工程只开启 @EnableCaching（配合 CacheConfig 的 RedisCacheManager）。
- * 后续需要定时任务时，自己在 P2 任务 2-3 补 @EnableScheduling；
- * 需要异步执行时再补 @EnableAsync。
+ * <p>已开启：
+ * <ul>
+ *   <li>{@code @EnableCaching} —— 配合 CacheConfig 的 RedisCacheManager</li>
+ *   <li>{@code @EnableScheduling} —— 配合 StockReconcileTask 的 {@code @Scheduled} 定时对账。
+ *       <b>少了这个注解，@Scheduled 完全不会执行，而且不报任何错</b>，是很容易漏的一步。</li>
+ * </ul>
+ * 需要异步执行时再补 {@code @EnableAsync}。
  */
 @Slf4j
 @EnableCaching
+@EnableScheduling
 @SpringBootApplication(scanBasePackages = "com.kangcode")
 public class KangRailApplication {
 

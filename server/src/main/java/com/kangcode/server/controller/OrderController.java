@@ -38,4 +38,10 @@ public class OrderController {
         orderService.cancel(UserContext.userId(), orderNo);
         return Result.ok();
     }
+
+    @PostMapping("/{orderNo}/refund")
+    public Result<Void> refund(@PathVariable String orderNo) {
+        orderService.refund(UserContext.userId(), orderNo);
+        return Result.ok();
+    }
 }

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -71,9 +72,13 @@ public class StockServiceImpl implements StockService {
         }
 
         //预热（写绝对值，而不是INCR）；重复执行结果一样，天然幂等
-        String key= RedisKeyConstant.ticketLockKey(
+        //注意：这里必须用 ticketStockKey（余票缓存），不能用 ticketLockKey——
+        //后者归 Redisson 分布式锁使用（Hash 结构），余票字符串写进去会导致购票时 WRONGTYPE。
+        String key= RedisKeyConstant.ticketStockKey(
                 request.getTrainId(),travelDate.toString(),request.getSeatType()
         );
-        return 0;
+        stringRedisTemplate.opsForValue()
+                .set(key, String.valueOf(remain), STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
+        return remain;
     }
 }

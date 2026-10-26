@@ -35,7 +35,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
-        <redisson.version>3.27.2</redisson.version>
+        <redisson.version>3.37.0</redisson.version>
         <jjwt.version>0.9.1</jjwt.version>
         <hutool.version>5.8.25</hutool.version>
         <!-- jjwt 0.9.1 依赖 javax.xml.bind.DatatypeConverter；

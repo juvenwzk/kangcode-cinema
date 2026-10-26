@@ -29,4 +29,10 @@ public class TicketBuyRequest {
     @Min(value = 1, message = "购票数量至少 1 张")
     @Max(value = 5, message = "单笔最多 5 张")
     private Integer ticketCount;
+
+    /** 乘客姓名（可选，单乘客演示；不传则订单明细里用占位值） */
+    private String passengerName;
+
+    /** 乘客证件号（可选；不传则订单明细里留空） */
+    private String idCardNo;
 }

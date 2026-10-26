@@ -56,3 +56,12 @@ jwt:
 logging:
   level:
     com.kangcode: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics      # 只暴露这两个，千万别写 *（env/beans/heapdump 会泄露配置甚至堆内存）
+  endpoint:
+    health:
+      show-details: always           # 展开每个组件（db/redis/rabbit）的状态

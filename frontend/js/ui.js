@@ -131,7 +131,7 @@
       '<h3>订单支付（模拟）</h3>' +
       '<div class="pay-amount">' + amount + '</div>' +
       '<div class="pay-note">订单号 ' + esc(no) + ' · 请在 30 分钟内完成支付</div>' +
-      '<div class="hint-box" style="text-align:center">真实支付接口将在 P4 实现（支付回调 + 超时关单），此处为前端模拟。</div>' +
+      '<div class="hint-box" style="text-align:center">点击下方按钮会调用后端支付回调 <code>POST /api/pay/callback</code>（模拟第三方平台通知）。</div>' +
       '<div class="modal-actions">' +
       '<button class="btn btn-default" id="payCancel">取消</button>' +
       '<button class="btn btn-buy" id="payOk">模拟支付成功</button>' +
@@ -139,8 +139,18 @@
     );
     document.getElementById('payCancel').onclick = closeModal;
     document.getElementById('payOk').onclick = function () {
-      closeModal();
-      toast('后端还没有支付接口（计划在 P4：支付回调 + 超时关单），这里不做任何本地模拟', 'warn');
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = '支付中…';
+      API.pay.callback(no).then(function () {
+        closeModal();
+        toast('支付成功');
+        if (window.App && App.route) { App.route(); }
+      }).catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = '模拟支付成功';
+        toast('支付失败：' + ((err && err.message) || ''), 'error');
+      });
     };
   }
 
