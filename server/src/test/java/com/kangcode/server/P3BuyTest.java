@@ -6,7 +6,7 @@ import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.OrderCreateMessage;
 import com.kangcode.pojo.dto.TicketBuyRequest;
 import com.kangcode.pojo.vo.TicketBuyVO;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.TicketServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +43,10 @@ import static org.mockito.Mockito.when;
 class P3BuyTest {
 
     private static final Long USER = 7L;
-    private static final Long TRAIN = 2L;
+    private static final Long SCREENING = 2L;
     private static final LocalDate DATE = LocalDate.of(2026, 10, 5);
     private static final String SEAT = "二等座";
-    private static final String STOCK_KEY = RedisKeyConstant.ticketStockKey(TRAIN, DATE.toString(), SEAT);
+    private static final String STOCK_KEY = RedisKeyConstant.ticketStockKey(SCREENING, DATE.toString(), SEAT);
 
     private StringRedisTemplate redis;
     private ValueOperations<String, String> ops;
@@ -69,15 +69,15 @@ class P3BuyTest {
 
         producer = mock(TicketOrderProducer.class);
 
-        service = new TicketServiceImpl(redis, redisson, mock(TrainSeatMapper.class),
+        service = new TicketServiceImpl(redis, redisson, mock(ScreeningSeatMapper.class),
                 producer, new DefaultRedisScript<>());
     }
 
     private TicketBuyRequest req(int count) {
         TicketBuyRequest r = new TicketBuyRequest();
-        r.setTrainId(TRAIN);
-        r.setTravelDate(DATE);
-        r.setSeatType(SEAT);
+        r.setScreeningId(SCREENING);
+        r.setShowDate(DATE);
+        r.setTicketType(SEAT);
         r.setTicketCount(count);
         return r;
     }
@@ -101,11 +101,11 @@ class P3BuyTest {
 
         ArgumentCaptor<OrderCreateMessage> cap = ArgumentCaptor.forClass(OrderCreateMessage.class);
         verify(producer).sendOrderCreate(cap.capture());
-        assertEquals(TRAIN, cap.getValue().getTrainId());
+        assertEquals(SCREENING, cap.getValue().getScreeningId());
         assertEquals(USER, cap.getValue().getUserId());
-        assertEquals(SEAT, cap.getValue().getSeatType());
-        // ↓↓↓ 这一条会暴露「消息里漏传 travelDate」的问题
-        assertEquals(DATE, cap.getValue().getTravelDate(), "下单消息里必须带 travelDate，否则落库查不到座位价格");
+        assertEquals(SEAT, cap.getValue().getTicketType());
+        // ↓↓↓ 这一条会暴露「消息里漏传 showDate」的问题
+        assertEquals(DATE, cap.getValue().getShowDate(), "下单消息里必须带 showDate，否则落库查不到座位价格");
 
         verify(lock).unlock();
     }

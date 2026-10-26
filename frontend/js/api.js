@@ -3,21 +3,21 @@
    后端接口清单（与 server 模块 Controller 一一对应）：
      POST /api/auth/register      POST /api/auth/login
      GET  /api/user/me            POST /api/user/logout
-     GET  /api/station/list
-     GET  /api/train/page         GET  /api/train/{id}
+     GET  /api/cinema/list
+     GET  /api/screening/page         GET  /api/screening/{id}
      GET  /api/ticket/remain      POST /api/ticket/buy
      GET  /api/order/my           GET  /api/order/{orderNo}
      POST /api/order/{orderNo}/cancel     取消订单（仅待支付）
      POST /api/order/{orderNo}/refund     退票（仅已支付/已出票）
      GET  /api/admin/ping
      POST /api/admin/stock/publish       放票 / 库存预热
-     PUT  /api/admin/train/{trainId}     车次维护
-     PUT  /api/admin/station/{stationId} 车站维护
+     PUT  /api/admin/train/{screeningId}     场次维护
+     PUT  /api/admin/station/{cinemaId} 影院维护
    ========================================================================== */
 (function () {
   'use strict';
 
-  var TOKEN_KEY = 'kr_token';
+  var TOKEN_KEY = 'mt_token';
   var logs = [];
   var listeners = [];
 
@@ -117,16 +117,16 @@
       { g: '认证', m: 'GET', p: '/api/user/me', auth: true, d: '当前登录用户' },
       { g: '认证', m: 'POST', p: '/api/user/logout', auth: true, d: '登出' },
 
-      { g: '基础数据', m: 'GET', p: '/api/station/list', auth: true, d: '车站列表' },
-      { g: '基础数据', m: 'GET', p: '/api/train/page', auth: true, d: '车次分页',
+      { g: '基础数据', m: 'GET', p: '/api/cinema/list', auth: true, d: '影院列表' },
+      { g: '基础数据', m: 'GET', p: '/api/screening/page', auth: true, d: '场次分页',
         f: [{ k: 'page', v: '1' }, { k: 'size', v: '10' }, { k: 'keyword', v: '' }] },
-      { g: '基础数据', m: 'GET', p: '/api/train/{id}', auth: true, d: '车次详情',
+      { g: '基础数据', m: 'GET', p: '/api/screening/{id}', auth: true, d: '场次详情',
         f: [{ k: 'id', v: '1' }] },
 
       { g: '票务', m: 'GET', p: '/api/ticket/remain', auth: true, d: '余票查询',
-        f: [{ k: 'trainId', v: '1' }, { k: 'travelDate', v: '2026-09-01' }, { k: 'seatType', v: '二等座' }] },
+        f: [{ k: 'screeningId', v: '1' }, { k: 'showDate', v: '2026-09-01' }, { k: 'ticketType', v: '二等座' }] },
       { g: '票务', m: 'POST', p: '/api/ticket/buy', auth: true, body: true, d: '购票下单',
-        f: [{ k: 'trainId', v: '1' }, { k: 'travelDate', v: '2026-09-01' }, { k: 'seatType', v: '二等座' }, { k: 'ticketCount', v: '1' }] },
+        f: [{ k: 'screeningId', v: '1' }, { k: 'showDate', v: '2026-09-01' }, { k: 'ticketType', v: '二等座' }, { k: 'ticketCount', v: '1' }] },
 
       { g: '订单', m: 'GET', p: '/api/order/my', auth: true, d: '我的订单' },
       { g: '订单', m: 'GET', p: '/api/order/{orderNo}', auth: true, d: '订单详情',
@@ -143,15 +143,15 @@
       { g: '管理端', m: 'GET', p: '/api/admin/ping', auth: true, admin: true, d: '管理员权限校验' },
       { g: '管理端', m: 'POST', p: '/api/admin/stock/publish', auth: true, admin: true, body: true,
         d: '放票 / 库存预热（写 DB + 预热 Redis）',
-        f: [{ k: 'trainId', v: '1' }, { k: 'travelDate', v: dateStr(1) }, { k: 'seatType', v: '二等座' }, { k: 'count', v: '100' }] },
-      { g: '管理端', m: 'PUT', p: '/api/admin/train/{trainId}', auth: true, admin: true, body: true,
-        d: '车次维护（改名 / 停运）',
-        f: [{ k: 'trainId', v: '1' }, { k: 'trainName', v: '北京-上海高铁' }, { k: 'status', v: '1' }],
-        bf: ['trainName', 'status'] },
-      { g: '管理端', m: 'PUT', p: '/api/admin/station/{stationId}', auth: true, admin: true, body: true,
-        d: '车站维护（改名 / 城市）',
-        f: [{ k: 'stationId', v: '1' }, { k: 'stationName', v: '北京' }, { k: 'city', v: '北京' }],
-        bf: ['stationName', 'city'] }
+        f: [{ k: 'screeningId', v: '1' }, { k: 'showDate', v: dateStr(1) }, { k: 'ticketType', v: '二等座' }, { k: 'count', v: '100' }] },
+      { g: '管理端', m: 'PUT', p: '/api/admin/train/{screeningId}', auth: true, admin: true, body: true,
+        d: '场次维护（改名 / 停运）',
+        f: [{ k: 'screeningId', v: '1' }, { k: 'movieName', v: '北京-上海高铁' }, { k: 'status', v: '1' }],
+        bf: ['movieName', 'status'] },
+      { g: '管理端', m: 'PUT', p: '/api/admin/station/{cinemaId}', auth: true, admin: true, body: true,
+        d: '影院维护（改名 / 城市）',
+        f: [{ k: 'cinemaId', v: '1' }, { k: 'cinemaName', v: '北京' }, { k: 'city', v: '北京' }],
+        bf: ['cinemaName', 'city'] }
     ],
 
     token: token,
@@ -184,20 +184,20 @@
     },
 
     station: {
-      list: function () { return request('GET', '/api/station/list'); }
+      list: function () { return request('GET', '/api/cinema/list'); }
     },
 
     train: {
       page: function (q) {
         q = q || {};
-        return request('GET', '/api/train/page' + query({ page: q.page || 1, size: q.size || 10, keyword: q.keyword }));
+        return request('GET', '/api/screening/page' + query({ page: q.page || 1, size: q.size || 10, keyword: q.keyword }));
       },
-      detail: function (id) { return request('GET', '/api/train/' + encodeURIComponent(id)); }
+      detail: function (id) { return request('GET', '/api/screening/' + encodeURIComponent(id)); }
     },
 
     ticket: {
-      remain: function (trainId, travelDate, seatType) {
-        return request('GET', '/api/ticket/remain' + query({ trainId: trainId, travelDate: travelDate, seatType: seatType }));
+      remain: function (screeningId, showDate, ticketType) {
+        return request('GET', '/api/ticket/remain' + query({ screeningId: screeningId, showDate: showDate, ticketType: ticketType }));
       },
       buy: function (payload) { return request('POST', '/api/ticket/buy', payload); }
     },
@@ -224,19 +224,19 @@
     admin: {
       ping: function () { return request('GET', '/api/admin/ping'); },
 
-      /** 放票 / 库存预热：{trainId, travelDate, seatType, count} → 返回最新余票 */
+      /** 放票 / 库存预热：{screeningId, showDate, ticketType, count} → 返回最新余票 */
       publishStock: function (payload) {
         return request('POST', '/api/admin/stock/publish', payload);
       },
 
-      /** 车次维护：{trainName?, status?} */
-      updateTrain: function (trainId, payload) {
-        return request('PUT', '/api/admin/train/' + encodeURIComponent(trainId), payload);
+      /** 场次维护：{movieName?, status?} */
+      updateTrain: function (screeningId, payload) {
+        return request('PUT', '/api/admin/train/' + encodeURIComponent(screeningId), payload);
       },
 
-      /** 车站维护：{stationName, city?} */
-      updateStation: function (stationId, payload) {
-        return request('PUT', '/api/admin/station/' + encodeURIComponent(stationId), payload);
+      /** 影院维护：{cinemaName, city?} */
+      updateStation: function (cinemaId, payload) {
+        return request('PUT', '/api/admin/station/' + encodeURIComponent(cinemaId), payload);
       }
     }
   };

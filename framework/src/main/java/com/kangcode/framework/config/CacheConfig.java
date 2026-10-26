@@ -64,10 +64,10 @@ public class CacheConfig {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> configs = new HashMap<>();
-        // 车站数据基本不变，缓存久一点
-        configs.put("station", base.entryTtl(Duration.ofHours(6)));
-        // 车次详情
-        configs.put("train", base.entryTtl(Duration.ofMinutes(30)));
+        // 影院数据基本不变，缓存久一点
+        configs.put("cinema", base.entryTtl(Duration.ofHours(6)));
+        // 场次详情
+        configs.put("screening", base.entryTtl(Duration.ofMinutes(30)));
         // 余票等热点数据
         configs.put("ticketStock", base.entryTtl(Duration.ofMinutes(5)));
 

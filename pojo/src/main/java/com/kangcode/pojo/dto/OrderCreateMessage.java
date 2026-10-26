@@ -24,11 +24,11 @@ public class OrderCreateMessage implements Serializable {
 
     private Long userId;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    private String seatType;
+    private String ticketType;
 
     private Integer ticketCount;
 

@@ -9,24 +9,24 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * 车次信息（返回给前端的对象，不含任何表结构/敏感字段）
+ * 场次信息（返回给前端的对象，不含任何表结构/敏感字段）
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TrainVO {
+public class ScreeningVO {
 
     private Long id;
 
-    /** 车次号，如 G1001 */
-    private String trainNo;
+    /** 场次号，如 G1001 */
+    private String screeningNo;
 
-    private String trainName;
+    private String movieName;
 
-    private Long startStationId;
+    private Long cinemaId;
 
-    private Long endStationId;
+    private Long hallId;
 
     private LocalTime startTime;
 
@@ -35,6 +35,6 @@ public class TrainVO {
     /** 状态：0 停运 1 运行 */
     private Integer status;
 
-    /** 经停站：列表接口返回空集合，详情接口返回完整列表 */
-    private List<TrainStationVO> stations;
+    /** 影厅：列表接口返回空集合，详情接口返回完整列表 */
+    private List<HallVO> halls;
 }

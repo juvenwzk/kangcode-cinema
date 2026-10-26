@@ -21,15 +21,15 @@ public class OrderVO {
 
     private String orderNo;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    private Long startStationId;
+    private Long cinemaId;
 
-    private Long endStationId;
+    private Long hallId;
 
-    private String seatType;
+    private String ticketType;
 
     private Integer ticketCount;
 

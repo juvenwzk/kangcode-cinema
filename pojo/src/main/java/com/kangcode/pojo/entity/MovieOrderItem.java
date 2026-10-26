@@ -9,8 +9,8 @@ import lombok.Data;
  * 订单明细（乘客）
  */
 @Data
-@TableName("train_order_item")
-public class TrainOrderItem {
+@TableName("movie_order_item")
+public class MovieOrderItem {
 
     @TableId(type = IdType.AUTO)
     private Long id;

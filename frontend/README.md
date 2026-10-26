@@ -1,4 +1,4 @@
-# 康轨 KangRail · 前端
+# 影票购票系统 · 前端
 
 纯 HTML / CSS / JavaScript，**只调用后端真实接口，没有任何本地模拟数据**。
 
@@ -26,16 +26,16 @@ nginx 按请求头 `Accept` 分流：浏览器直接访问返回页面，前端 
 | `/` | 首页 / 查询入口 | — |
 | `/api/auth/login` | 登录 / 注册 | `POST /api/auth/register`、`POST /api/auth/login` |
 | `/api/user/me` | 个人中心 | `GET /api/user/me`、`POST /api/user/logout` |
-| `/api/station/list` | 车站列表 | `GET /api/station/list` |
-| `/api/train/page` | 车次列表（支持 `?from=&to=&date=` 区间查询） | `GET /api/train/page`（区间模式再用 `GET /api/station/list`） |
-| `/api/train/{id}` | 车次详情 / 时刻表（含**经停站**） | `GET /api/train/{id}` |
+| `/api/cinema/list` | 影院列表 | `GET /api/cinema/list` |
+| `/api/screening/page` | 场次列表（支持 `?from=&to=&date=` 区间查询） | `GET /api/screening/page`（区间模式再用 `GET /api/cinema/list`） |
+| `/api/screening/{id}` | 场次详情 / 时刻表（含**影厅**） | `GET /api/screening/{id}` |
 | `/api/ticket/remain` | 余票查询 | `GET /api/ticket/remain` |
 | `/api/ticket/buy` | 购票下单 | `POST /api/ticket/buy` |
 | `/api/order/my` | 我的订单 | `GET /api/order/my`、`GET /api/order/{orderNo}`、`POST /api/order/{orderNo}/cancel`、`POST /api/order/{orderNo}/refund` |
 | `/api/admin/ping` | **管理控制台**（默认打开「放票」页） | `GET /api/admin/ping` |
 | `/api/admin/stock/publish` | 管理台 · 放票 / 库存预热 | `POST /api/admin/stock/publish` |
-| `/api/admin/train` | 管理台 · 车次维护 | `PUT /api/admin/train/{trainId}` |
-| `/api/admin/station` | 管理台 · 车站维护 | `PUT /api/admin/station/{stationId}` |
+| `/api/admin/train` | 管理台 · 场次维护 | `PUT /api/admin/train/{screeningId}` |
+| `/api/admin/station` | 管理台 · 影院维护 | `PUT /api/admin/station/{cinemaId}` |
 | `/console` | 接口联调控制台（调试页，非后端接口） | 全部 18 个接口 |
 
 ## 管理控制台（P2 完成后已可用）
@@ -44,9 +44,9 @@ nginx 按请求头 `Accept` 分流：浏览器直接访问返回页面，前端 
 
 | 功能页 | 做什么 | 对应接口 | 对应任务 |
 | --- | --- | --- | --- |
-| **放票 / 库存预热** | 给「车次 + 日期 + 席别」放票，写 DB 并预热 Redis；已存在则 total/remain 累加 | `POST /api/admin/stock/publish` | P2-2 |
-| **车次维护** | 改车次名称、启用/停运（会自动清 `railway:cache:train::id` 缓存） | `PUT /api/admin/train/{trainId}` | P2-4 |
-| **车站维护** | 改站名、城市（清 station 缓存） | `PUT /api/admin/station/{stationId}` | P2-4 |
+| **放票 / 库存预热** | 给「场次 + 日期 + 票种」放票，写 DB 并预热 Redis；已存在则 total/remain 累加 | `POST /api/admin/stock/publish` | P2-2 |
+| **场次维护** | 改场次名称、启用/停运（会自动清 `railway:cache:train::id` 缓存） | `PUT /api/admin/train/{screeningId}` | P2-4 |
+| **影院维护** | 改站名、城市（清 station 缓存） | `PUT /api/admin/station/{cinemaId}` | P2-4 |
 | 余票查询 | 查 Redis 里的余票 | `GET /api/ticket/remain` | P2 |
 | 接口调用日志 | 本页发起的调用记录 | — | — |
 
@@ -56,13 +56,13 @@ nginx 按请求头 `Accept` 分流：浏览器直接访问返回页面，前端 
 
 ```
 登录 admin → 放票（记下返回的余票）→ 放票后查余票 → 两次放票看是否累加
-          → 车次维护改名 → 回车次详情看是否立刻生效（验证缓存清理）
+          → 场次维护改名 → 回场次详情看是否立刻生效（验证缓存清理）
           → 退出登录，用 demo 再访问管理台，应看到 403 提示
 ```
 
 ## 登录与鉴权
 
-- 登录成功后，后端返回的 JWT 存在 `localStorage['kr_token']`；
+- 登录成功后，后端返回的 JWT 存在 `localStorage['mt_token']`；
 - 之后所有请求自动带 `Authorization: Bearer <token>`；
 - 后端返回 401 时前端会清除本地 token 并提示重新登录；
 - **角色写在 JWT 里**，改了角色必须重新登录才生效；
@@ -90,7 +90,7 @@ frontend/
 └── js/
     ├── api.js        API 客户端（18 个接口 + 调用日志 + 接口清单）
     ├── ui.js         组件：提示、弹窗、登录、支付提示、时刻表
-    ├── pages.js      页面：首页/登录/个人中心/车站/车次/详情/余票/下单/订单/管理台/控制台
+    ├── pages.js      页面：首页/登录/个人中心/影院/场次/详情/余票/下单/订单/管理台/控制台
     └── app.js        历史模式路由（路径与接口一致）+ 顶部栏
 ```
 

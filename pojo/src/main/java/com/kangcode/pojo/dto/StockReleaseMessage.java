@@ -22,11 +22,11 @@ public class StockReleaseMessage implements Serializable {
     /** 订单号（与 OrderCreateMessage / OrderTimeoutMessage 保持一致，统一叫 orderNo） */
     private String orderNo;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    private String seatType;
+    private String ticketType;
 
     private Integer ticketCount;
 

@@ -1,8 +1,8 @@
 package com.kangcode.server;
 
 import com.kangcode.common.constant.RedisKeyConstant;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.TicketServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,14 +33,14 @@ import static org.mockito.Mockito.when;
  */
 class P2CacheTest {
 
-    private static final Long TRAIN = 2L;
+    private static final Long SCREENING = 2L;
     private static final LocalDate DATE = LocalDate.of(2026, 10, 5);
     private static final String SEAT = "二等座";
-    private static final String KEY = RedisKeyConstant.ticketStockKey(TRAIN, DATE.toString(), SEAT);
+    private static final String KEY = RedisKeyConstant.ticketStockKey(SCREENING, DATE.toString(), SEAT);
 
     private StringRedisTemplate redis;
     private ValueOperations<String, String> ops;
-    private TrainSeatMapper seatMapper;
+    private ScreeningSeatMapper seatMapper;
     private TicketServiceImpl service;
 
     @BeforeEach
@@ -49,7 +49,7 @@ class P2CacheTest {
         ops = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(ops);
 
-        seatMapper = mock(TrainSeatMapper.class);
+        seatMapper = mock(ScreeningSeatMapper.class);
         service = new TicketServiceImpl(redis, mock(RedissonClient.class), seatMapper,
                 mock(TicketOrderProducer.class), new DefaultRedisScript<>());
     }
@@ -59,7 +59,7 @@ class P2CacheTest {
     void cacheHit() {
         when(ops.get(KEY)).thenReturn("42");
 
-        assertEquals(42, service.queryRemain(TRAIN, DATE, SEAT).intValue());
+        assertEquals(42, service.queryRemain(SCREENING, DATE, SEAT).intValue());
         verify(seatMapper, never()).selectOne(any());
     }
 
@@ -69,11 +69,11 @@ class P2CacheTest {
         when(ops.get(KEY)).thenReturn(null);
         when(ops.setIfAbsent(anyString(), anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
 
-        TrainSeat seat = new TrainSeat();
+        ScreeningSeat seat = new ScreeningSeat();
         seat.setRemain(30);
         when(seatMapper.selectOne(any())).thenReturn(seat);
 
-        assertEquals(30, service.queryRemain(TRAIN, DATE, SEAT).intValue());
+        assertEquals(30, service.queryRemain(SCREENING, DATE, SEAT).intValue());
         verify(ops).set(eq(KEY), eq("30"), anyLong(), any(TimeUnit.class));
     }
 
@@ -84,7 +84,7 @@ class P2CacheTest {
         when(ops.setIfAbsent(anyString(), anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         when(seatMapper.selectOne(any())).thenReturn(null);
 
-        assertEquals(0, service.queryRemain(TRAIN, DATE, SEAT).intValue());
+        assertEquals(0, service.queryRemain(SCREENING, DATE, SEAT).intValue());
         verify(ops).set(eq(KEY), eq("EMPTY"), anyLong(), any(TimeUnit.class));
     }
 
@@ -93,7 +93,7 @@ class P2CacheTest {
     void emptyFlag() {
         when(ops.get(KEY)).thenReturn("EMPTY");
 
-        assertEquals(0, service.queryRemain(TRAIN, DATE, SEAT).intValue());
+        assertEquals(0, service.queryRemain(SCREENING, DATE, SEAT).intValue());
         verify(seatMapper, never()).selectOne(any());
     }
 
@@ -103,8 +103,8 @@ class P2CacheTest {
         String stock = RedisKeyConstant.ticketStockKey(2L, "2026-10-05", "二等座");
         String lock = RedisKeyConstant.ticketLockKey(2L, "2026-10-05", "二等座");
 
-        assertEquals("ticket:stock:2:2026-10-05:二等座", stock);
-        assertEquals("ticket:lock:2:2026-10-05:二等座", lock);
+        assertEquals("screening:stock:2:2026-10-05:二等座", stock);
+        assertEquals("screening:lock:2:2026-10-05:二等座", lock);
         assertNotEquals(stock, lock);
     }
 

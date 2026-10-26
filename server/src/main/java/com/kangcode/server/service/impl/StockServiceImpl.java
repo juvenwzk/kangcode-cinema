@@ -5,9 +5,9 @@ import com.kangcode.common.constant.RedisKeyConstant;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.StockPublishRequest;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.pojo.entity.TrainStation;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.pojo.entity.Hall;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
 import com.kangcode.server.service.StockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,37 +27,37 @@ public class StockServiceImpl implements StockService {
 
     private final long STOCK_CACHE_MINUTES=30;
 
-    private final TrainSeatMapper trainSeatMapper;
+    private final ScreeningSeatMapper screeningSeatMapper;
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int publish(StockPublishRequest request) {
-        LocalDate travelDate=request.getTravelDate();
+        LocalDate showDate=request.getShowDate();
         //放历史日期的票没有意义，直接挡掉
-        if(travelDate.isBefore(LocalDate.now())){
+        if(showDate.isBefore(LocalDate.now())){
             throw new BusinessException(ResultCode.BAD_REQUEST);
         }
 
-        TrainSeat seat = trainSeatMapper.selectOne(new LambdaQueryWrapper<TrainSeat>()
-                .eq(TrainSeat::getTrainId, request.getTrainId())
-                .eq(TrainSeat::getTravelDate, travelDate)
-                .eq(TrainSeat::getSeatType, request.getSeatType()));
+        ScreeningSeat seat = screeningSeatMapper.selectOne(new LambdaQueryWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, request.getScreeningId())
+                .eq(ScreeningSeat::getShowDate, showDate)
+                .eq(ScreeningSeat::getTicketType, request.getTicketType()));
 
         int remain;//余票的票数
         if(seat==null){
-            //第一次给这个【车次+日期+席别】放票：插入一条库存记录
-            TrainSeat trainSeat=new TrainSeat();
-            trainSeat.setTrainId(request.getTrainId());
-            trainSeat.setTravelDate(travelDate);
-            trainSeat.setSeatType(request.getSeatType());
-            trainSeat.setTotal(request.getCount());
-            trainSeat.setRemain(request.getCount());
-            trainSeat.setPrice(0L);            // 票价由管理端另行维护，这里先给 0
-            trainSeat.setVersion(0);
-            trainSeat.setStatus(1);
-            trainSeat.setUpdateTime(LocalDateTime.now());
-            trainSeatMapper.insert(trainSeat);
+            //第一次给这个【场次+日期+票种】放票：插入一条库存记录
+            ScreeningSeat screeningSeat=new ScreeningSeat();
+            screeningSeat.setScreeningId(request.getScreeningId());
+            screeningSeat.setShowDate(showDate);
+            screeningSeat.setTicketType(request.getTicketType());
+            screeningSeat.setTotal(request.getCount());
+            screeningSeat.setRemain(request.getCount());
+            screeningSeat.setPrice(0L);            // 票价由管理端另行维护，这里先给 0
+            screeningSeat.setVersion(0);
+            screeningSeat.setStatus(1);
+            screeningSeat.setUpdateTime(LocalDateTime.now());
+            screeningSeatMapper.insert(screeningSeat);
             remain=request.getCount();
         }else{
             //已存在：总票数和余票一起加
@@ -66,7 +66,7 @@ public class StockServiceImpl implements StockService {
             seat.setRemain(seat.getRemain() + request.getCount());
             seat.setUpdateTime(LocalDateTime.now());
             // 实体上有 @Version，这里走乐观锁（MybatisPlusConfig 已注册乐观锁插件）
-            trainSeatMapper.updateById(seat);
+            screeningSeatMapper.updateById(seat);
             remain = seat.getRemain();
 
         }
@@ -75,7 +75,7 @@ public class StockServiceImpl implements StockService {
         //注意：这里必须用 ticketStockKey（余票缓存），不能用 ticketLockKey——
         //后者归 Redisson 分布式锁使用（Hash 结构），余票字符串写进去会导致购票时 WRONGTYPE。
         String key= RedisKeyConstant.ticketStockKey(
-                request.getTrainId(),travelDate.toString(),request.getSeatType()
+                request.getScreeningId(),showDate.toString(),request.getTicketType()
         );
         stringRedisTemplate.opsForValue()
                 .set(key, String.valueOf(remain), STOCK_CACHE_MINUTES, TimeUnit.MINUTES);

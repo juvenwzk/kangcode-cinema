@@ -1,9 +1,9 @@
 package com.kangcode.server.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.kangcode.pojo.entity.TrainOrder;
+import com.kangcode.pojo.entity.Hall;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface TrainOrderMapper extends BaseMapper<TrainOrder> {
+public interface HallMapper extends BaseMapper<Hall> {
 }

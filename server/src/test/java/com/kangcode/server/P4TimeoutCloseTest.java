@@ -1,12 +1,13 @@
 package com.kangcode.server;
 
 import com.kangcode.pojo.dto.StockReleaseMessage;
-import com.kangcode.pojo.entity.TrainOrder;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainMapper;
-import com.kangcode.server.mapper.TrainOrderItemMapper;
-import com.kangcode.server.mapper.TrainOrderMapper;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.MovieOrder;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningMapper;
+import com.kangcode.server.mapper.MovieOrderItemMapper;
+import com.kangcode.server.mapper.MovieOrderMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
+import com.kangcode.server.mapper.StockReleaseLogMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,8 +47,8 @@ class P4TimeoutCloseTest {
     private static final int PAID = 1;
     private static final int CANCELED = 2;
 
-    private TrainOrderMapper orderMapper;
-    private TrainSeatMapper seatMapper;
+    private MovieOrderMapper orderMapper;
+    private ScreeningSeatMapper seatMapper;
     private StringRedisTemplate redis;
     private ValueOperations<String, String> valueOps;
     private TicketOrderProducer producer;
@@ -56,30 +57,30 @@ class P4TimeoutCloseTest {
     /** Lambda Wrapper 要把方法引用解析成列名，得先有实体的元数据（纯单测里没有 Spring） */
     @BeforeAll
     static void initMp() {
-        MpLambdaSupport.init(TrainOrder.class, TrainSeat.class);
+        MpLambdaSupport.init(MovieOrder.class, ScreeningSeat.class);
     }
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
-        orderMapper = mock(TrainOrderMapper.class);
-        seatMapper = mock(TrainSeatMapper.class);
+        orderMapper = mock(MovieOrderMapper.class);
+        seatMapper = mock(ScreeningSeatMapper.class);
         redis = mock(StringRedisTemplate.class);
         valueOps = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(valueOps);
         producer = mock(TicketOrderProducer.class);
 
-        service = new OrderServiceImpl(orderMapper, mock(TrainMapper.class),
-                seatMapper, mock(TrainOrderItemMapper.class), redis, producer);
+        service = new OrderServiceImpl(orderMapper, mock(ScreeningMapper.class),
+                seatMapper, mock(MovieOrderItemMapper.class), redis, producer, mock(StockReleaseLogMapper.class));
     }
 
-    private TrainOrder order(int status) {
-        TrainOrder o = new TrainOrder();
+    private MovieOrder order(int status) {
+        MovieOrder o = new MovieOrder();
         o.setOrderNo("KR20261123000001");
         o.setUserId(11L);
-        o.setTrainId(1L);
-        o.setTravelDate(LocalDate.of(2026, 11, 23));
-        o.setSeatType("二等座");
+        o.setScreeningId(1L);
+        o.setShowDate(LocalDate.of(2026, 11, 23));
+        o.setTicketType("二等座");
         o.setTicketCount(1);
         o.setStatus(status);
         return o;
@@ -100,8 +101,8 @@ class P4TimeoutCloseTest {
 
         StockReleaseMessage msg = cap.getValue();
         assertEquals("KR20261123000001", msg.getOrderNo());
-        assertEquals(1L, msg.getTrainId().longValue());
-        assertEquals(LocalDate.of(2026, 11, 23), msg.getTravelDate());
+        assertEquals(1L, msg.getScreeningId().longValue());
+        assertEquals(LocalDate.of(2026, 11, 23), msg.getShowDate());
         assertEquals(1, msg.getTicketCount().intValue());
         assertEquals("TIMEOUT", msg.getReason(), "超时的 reason 必须是 TIMEOUT（取消是 CANCEL）");
     }
@@ -138,15 +139,15 @@ class P4TimeoutCloseTest {
 
         service.releaseStock(StockReleaseMessage.builder()
                 .orderNo("KR20261123000001")
-                .trainId(1L)
-                .travelDate(LocalDate.of(2026, 11, 23))
-                .seatType("二等座")
+                .screeningId(1L)
+                .showDate(LocalDate.of(2026, 11, 23))
+                .ticketType("二等座")
                 .ticketCount(2)
                 .reason("TIMEOUT")
                 .build());
 
-        // Redis 侧：key 必须是余票 key（ticket:stock:*），且数量正确
-        verify(valueOps).increment(eq("ticket:stock:1:2026-11-23:二等座"), eq(2L));
+        // Redis 侧：key 必须是余票 key（screening:stock:*），且数量正确
+        verify(valueOps).increment(eq("screening:stock:1:2026-11-23:二等座"), eq(2L));
 
         // DB 侧：也能摸到一次 update
         verify(seatMapper).update(isNull(), any());
@@ -159,9 +160,9 @@ class P4TimeoutCloseTest {
 
         service.releaseStock(StockReleaseMessage.builder()
                 .orderNo("KR20261123000001")
-                .trainId(1L)
-                .travelDate(LocalDate.of(2026, 11, 23))
-                .seatType("二等座")
+                .screeningId(1L)
+                .showDate(LocalDate.of(2026, 11, 23))
+                .ticketType("二等座")
                 .ticketCount(1)
                 .reason("CANCEL")
                 .build());
@@ -170,8 +171,8 @@ class P4TimeoutCloseTest {
         verify(valueOps).increment(keyCap.capture(), anyLong());
 
         String key = keyCap.getValue();
-        assertTrue(key.startsWith("ticket:stock:"), "回补必须写余票 key，实际是：" + key);
-        assertFalse(key.startsWith("ticket:lock:"),
+        assertTrue(key.startsWith("screening:stock:"), "回补必须写余票 key，实际是：" + key);
+        assertFalse(key.startsWith("screening:lock:"),
                 "写进锁 key 会让余票变成 Hash 类型，购票 Lua 会报 WRONGTYPE");
     }
 }

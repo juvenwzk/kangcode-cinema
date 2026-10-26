@@ -7,7 +7,7 @@
   var esc = UI.esc;
   var app = document.getElementById('app');
 
-  /* 席别是业务常量（后端 train_seat.seat_type 的取值），不是模拟数据 */
+  /* 票种是业务常量（后端 train_seat.seat_type 的取值），不是模拟数据 */
   var SEAT_TYPES = {
     G: ['商务座', '一等座', '二等座'],
     D: ['商务座', '一等座', '二等座'],
@@ -39,8 +39,8 @@
     var mm = d.getMonth() + 1, dd = d.getDate();
     return d.getFullYear() + '-' + (mm < 10 ? '0' + mm : mm) + '-' + (dd < 10 ? '0' + dd : dd);
   }
-  function typeOf(train) { return String((train && train.trainNo) || 'G').charAt(0).toUpperCase(); }
-  function seatTypesOf(train) { return SEAT_TYPES[typeOf(train)] || SEAT_TYPES.G; }
+  function typeOf(train) { return String((train && train.screeningNo) || 'G').charAt(0).toUpperCase(); }
+  function ticketTypesOf(train) { return SEAT_TYPES[typeOf(train)] || SEAT_TYPES.G; }
   function toMin(t) { var p = String(t || '0:0').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
   function durOf(train) {
     if (!train || !train.startTime || !train.endTime) { return 0; }
@@ -93,7 +93,7 @@
 
       /* ---- Hero 品牌区 ---- */
       '  <div class="hero">' +
-      '    <h1>康轨 KangRail · 铁路客票服务</h1>' +
+      '    <h1>影票购票系统 · 铁路客票服务</h1>' +
       '    <p>高并发购票系统演示 —— Redis 原子预扣、Redisson 分布式锁、RabbitMQ 异步落库。' +
       '       下面的每一个页面都在<b>真实调用后端接口</b>，不是静态原型。</p>' +
       '    <div class="hero-tags">' +
@@ -126,14 +126,14 @@
       '      <span class="muted" style="font-size:12px">每个入口对应一个后端接口</span></div>' +
       '    <div class="card-body">' +
       '      <div class="entry-grid">' +
-      '        <a class="entry-card" href="/api/train/page">' +
+      '        <a class="entry-card" href="/api/screening/page">' +
       '          <span class="entry-icon">' + ICON.train + '</span>' +
-      '          <span><span class="entry-title">车次查询</span>' +
-      '          <span class="entry-desc">GET /api/train/page</span></span></a>' +
-      '        <a class="entry-card" href="/api/station/list">' +
+      '          <span><span class="entry-title">场次查询</span>' +
+      '          <span class="entry-desc">GET /api/screening/page</span></span></a>' +
+      '        <a class="entry-card" href="/api/cinema/list">' +
       '          <span class="entry-icon">' + ICON.station + '</span>' +
-      '          <span><span class="entry-title">车站列表</span>' +
-      '          <span class="entry-desc">GET /api/station/list</span></span></a>' +
+      '          <span><span class="entry-title">影院列表</span>' +
+      '          <span class="entry-desc">GET /api/cinema/list</span></span></a>' +
       '        <a class="entry-card" href="/api/ticket/remain">' +
       '          <span class="entry-icon">' + ICON.ticket + '</span>' +
       '          <span><span class="entry-title">余票查询</span>' +
@@ -161,8 +161,8 @@
       /* ---- 演示数据一览（换成卡片式的）---- */
       '  <div class="card"><div class="card-body">' +
       '    <div class="stat-row">' +
-      '      <div class="stat-box"><div class="k">车站表</div><div class="v">5 条</div></div>' +
-      '      <div class="stat-box"><div class="k">车次表</div><div class="v">2 条</div></div>' +
+      '      <div class="stat-box"><div class="k">影院表</div><div class="v">5 条</div></div>' +
+      '      <div class="stat-box"><div class="k">场次表</div><div class="v">2 条</div></div>' +
       '      <div class="stat-box"><div class="k">线路</div><div class="v">北京 ⇄ 上海 / 广州</div></div>' +
       '      <div class="stat-box"><div class="k">演示日期</div><div class="v">2026-09-01</div></div>' +
       '    </div>' +
@@ -198,7 +198,7 @@
       var chip = strip.querySelector('.date-chip.on');
       var date = chip ? chip.getAttribute('data-date') : today(0);
       if (!from || !to) { UI.toast('请填写出发地和到达地', 'error'); return; }
-      App.navigate('/api/train/page' + API.query({ from: from, to: to, date: date }));
+      App.navigate('/api/screening/page' + API.query({ from: from, to: to, date: date }));
     };
   }
 
@@ -279,30 +279,30 @@
   }
 
   /* ======================================================================
-     /api/station/list　车站列表
+     /api/cinema/list　影院列表
      ====================================================================== */
-  function stations() {
+  function halls() {
     app.innerHTML =
       '<div class="page">' +
-      '  <div class="page-head"><h2>车站列表</h2><span class="sub"><code>GET /api/station/list</code></span></div>' +
+      '  <div class="page-head"><h2>影院列表</h2><span class="sub"><code>GET /api/cinema/list</code></span></div>' +
       '  <div class="card"><div class="table-wrap"><table class="data-table" id="stTable"></table></div>' +
       '    <div class="card-body" style="border-top:1px solid var(--line)"><span class="muted" id="stMeta">加载中…</span></div></div>' +
       '</div>';
     var table = document.getElementById('stTable');
-    if (!API.hasToken()) { loginRequired(table.parentNode, '车站接口需要登录'); return; }
+    if (!API.hasToken()) { loginRequired(table.parentNode, '影院接口需要登录'); return; }
     API.station.list().then(function (list) {
       list = list || [];
-      document.getElementById('stMeta').textContent = '共 ' + list.length + ' 个车站';
+      document.getElementById('stMeta').textContent = '共 ' + list.length + ' 个影院';
       table.innerHTML = '<tr><th>ID</th><th>站码</th><th>站名</th><th>城市</th></tr>' +
         list.map(function (s) {
-          return '<tr><td class="num">' + s.id + '</td><td>' + esc(s.stationCode) + '</td>' +
-            '<td><b>' + esc(s.stationName) + '</b></td><td>' + esc(s.city || '-') + '</td></tr>';
+          return '<tr><td class="num">' + s.id + '</td><td>' + esc(s.cinemaCode) + '</td>' +
+            '<td><b>' + esc(s.cinemaName) + '</b></td><td>' + esc(s.city || '-') + '</td></tr>';
         }).join('');
     }).catch(function (err) { errorBox(table.parentNode, err); });
   }
 
   /* ======================================================================
-     /api/train/page　车次列表（分页 / 关键字，或 ?from=&to= 区间过滤）
+     /api/screening/page　场次列表（分页 / 关键字，或 ?from=&to= 区间过滤）
      ====================================================================== */
   var lib = { page: 1, size: 10, keyword: '', pages: 1, total: 0 };
 
@@ -312,12 +312,12 @@
 
     app.innerHTML =
       '<div class="page">' +
-      '  <div class="page-head"><h2>' + (routeMode ? '车次查询：' + esc(from) + ' → ' + esc(to) : '车次列表') + '</h2>' +
-      '    <span class="sub"><code>GET /api/train/page</code>' + (routeMode ? '（+ GET /api/station/list，区间由前端过滤）' : '') + '</span></div>' +
+      '  <div class="page-head"><h2>' + (routeMode ? '场次查询：' + esc(from) + ' → ' + esc(to) : '场次列表') + '</h2>' +
+      '    <span class="sub"><code>GET /api/screening/page</code>' + (routeMode ? '（+ GET /api/cinema/list，区间由前端过滤）' : '') + '</span></div>' +
       '  <div class="card" style="margin-bottom:14px"><div class="card-body" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
       (routeMode
         ? '<span class="muted">日期：' + esc(date || '未指定') + '　（余票请点每行的「余票/购票」）</span>'
-        : '<input class="input" id="libKeyword" placeholder="车次号 / 车次名" style="width:220px" value="' + esc(lib.keyword) + '">' +
+        : '<input class="input" id="libKeyword" placeholder="场次号 / 场次名" style="width:220px" value="' + esc(lib.keyword) + '">' +
           '<button class="btn btn-primary" id="libSearch">查询</button>' +
           '<button class="btn btn-default" id="libReload">刷新</button>') +
       '  </div></div>' +
@@ -336,7 +336,7 @@
       '</div>';
 
     var table = document.getElementById('libTable');
-    if (!API.hasToken()) { loginRequired(table.parentNode, '车次接口需要登录'); return; }
+    if (!API.hasToken()) { loginRequired(table.parentNode, '场次接口需要登录'); return; }
 
     if (routeMode) {
       document.getElementById('libPrev').style.display = 'none';
@@ -361,19 +361,19 @@
 
     function loadPage() {
       table.innerHTML = '<tr><td>' + UI.skeletonRows(3) + '</td></tr>';
-      var path = '/api/train/page' + API.query({ page: lib.page, size: lib.size, keyword: lib.keyword });
+      var path = '/api/screening/page' + API.query({ page: lib.page, size: lib.size, keyword: lib.keyword });
       API.train.page({ page: lib.page, size: lib.size, keyword: lib.keyword }).then(function (p) {
         var records = (p && p.records) || [];
         lib.total = p.total || 0;
         lib.pages = p.pages || 1;
         document.getElementById('libMeta').textContent = '共 ' + lib.total + ' 条 · 第 ' + lib.page + '/' + lib.pages + ' 页';
-        table.innerHTML = '<tr><th>ID</th><th>车次</th><th>名称</th><th>始发站ID</th><th>终到站ID</th><th>发车</th><th>到达</th><th>状态</th></tr>' +
+        table.innerHTML = '<tr><th>ID</th><th>场次</th><th>名称</th><th>始发站ID</th><th>终到站ID</th><th>发车</th><th>到达</th><th>状态</th></tr>' +
           (records.length ? records.map(function (t) {
             return '<tr><td class="num">' + t.id + '</td>' +
-              '<td><a href="/api/train/' + t.id + '"><b>' + esc(t.trainNo) + '</b></a></td>' +
-              '<td>' + esc(t.trainName || '-') + '</td>' +
-              '<td class="num">' + (t.startStationId || '-') + '</td>' +
-              '<td class="num">' + (t.endStationId || '-') + '</td>' +
+              '<td><a href="/api/screening/' + t.id + '"><b>' + esc(t.screeningNo) + '</b></a></td>' +
+              '<td>' + esc(t.movieName || '-') + '</td>' +
+              '<td class="num">' + (t.cinemaId || '-') + '</td>' +
+              '<td class="num">' + (t.hallId || '-') + '</td>' +
               '<td class="num">' + esc(hm(t.startTime)) + '</td>' +
               '<td class="num">' + esc(hm(t.endTime)) + '</td>' +
               '<td>' + (t.status === 1 ? '运行' : '停运') + '</td></tr>';
@@ -384,71 +384,71 @@
       }).catch(function (err) { errorBox(table.parentNode, err); });
     }
 
-    /* 区间模式：车站 + 车次 两个真实接口，前端按城市过滤 */
+    /* 区间模式：影院 + 场次 两个真实接口，前端按城市过滤 */
     function loadRoute() {
       table.innerHTML = '<tr><td>' + UI.skeletonRows(3) + '</td></tr>';
-      var stPath = '/api/station/list';
-      var trPath = '/api/train/page' + API.query({ page: 1, size: 200 });
+      var stPath = '/api/cinema/list';
+      var trPath = '/api/screening/page' + API.query({ page: 1, size: 200 });
       Promise.all([API.station.list(), API.train.page({ page: 1, size: 200 })]).then(function (res) {
-        var stations = res[0] || [], records = (res[1] && res[1].records) || [];
+        var halls = res[0] || [], records = (res[1] && res[1].records) || [];
         var byId = {};
-        stations.forEach(function (s) { byId[s.id] = s; });
+        halls.forEach(function (s) { byId[s.id] = s; });
         var list = records.map(function (t) {
-          var a = byId[t.startStationId] || {}, b = byId[t.endStationId] || {};
-          return { t: t, from: a.city || a.stationName || '', to: b.city || b.stationName || '' };
+          var a = byId[t.cinemaId] || {}, b = byId[t.hallId] || {};
+          return { t: t, from: a.city || a.cinemaName || '', to: b.city || b.cinemaName || '' };
         }).filter(function (x) {
           return (x.from === from || x.from.indexOf(from) >= 0) && (x.to === to || x.to.indexOf(to) >= 0);
         });
         document.getElementById('libMeta').textContent = '共 ' + list.length + ' 趟（前端本地过滤）';
-        table.innerHTML = '<tr><th>车次</th><th>出发站</th><th>到达站</th><th>发车</th><th>到达</th><th>历时</th><th>操作</th></tr>' +
+        table.innerHTML = '<tr><th>场次</th><th>出发站</th><th>到达站</th><th>发车</th><th>到达</th><th>历时</th><th>操作</th></tr>' +
           (list.length ? list.map(function (x) {
             var t = x.t;
             var arr = addMinutes(t.startTime, durOf(t));
-            return '<tr><td><a href="/api/train/' + t.id + '"><b>' + esc(t.trainNo) + '</b></a></td>' +
+            return '<tr><td><a href="/api/screening/' + t.id + '"><b>' + esc(t.screeningNo) + '</b></a></td>' +
               '<td>' + esc(x.from) + '</td><td>' + esc(x.to) + '</td>' +
               '<td class="num">' + esc(hm(t.startTime)) + '</td>' +
               '<td class="num">' + (arr.nextDay ? '次日 ' : '') + esc(arr.time) + '</td>' +
               '<td>' + esc(fmtHM(durOf(t))) + '</td>' +
-              '<td><a class="btn btn-default btn-sm" href="/api/train/' + t.id + '">时刻表</a> ' +
-              '<a class="btn btn-buy btn-sm" href="/api/ticket/remain' + API.query({ trainId: t.id, travelDate: date || '' }) + '">查余票</a></td></tr>';
-          }).join('') : '<tr><td colspan="7" class="muted">你后端 train 表中没有 ' + esc(from) + ' → ' + esc(to) + ' 的车次</td></tr>');
+              '<td><a class="btn btn-default btn-sm" href="/api/screening/' + t.id + '">时刻表</a> ' +
+              '<a class="btn btn-buy btn-sm" href="/api/ticket/remain' + API.query({ screeningId: t.id, showDate: date || '' }) + '">查余票</a></td></tr>';
+          }).join('') : '<tr><td colspan="7" class="muted">你后端 train 表中没有 ' + esc(from) + ' → ' + esc(to) + ' 的场次</td></tr>');
         showRaw('GET ' + stPath + ' ＋ GET ' + trPath,
-          '车站 ' + stations.length + ' 条\n车次 ' + records.length + ' 条\n本地过滤 ' + from + ' → ' + to + ' 命中 ' + list.length + ' 趟');
+          '影院 ' + halls.length + ' 条\n场次 ' + records.length + ' 条\n本地过滤 ' + from + ' → ' + to + ' 命中 ' + list.length + ' 趟');
       }).catch(function (err) { errorBox(table.parentNode, err); });
     }
   }
 
   /* ======================================================================
-     /api/train/{id}　车次详情
+     /api/screening/{id}　场次详情
      ====================================================================== */
   function trainDetail(args) {
     var id = (args && args[0]) || param('id');
     app.innerHTML =
       '<div class="page" style="max-width:820px">' +
-      '  <div class="page-head"><h2>车次详情</h2><span class="sub"><code>GET /api/train/' + esc(id) + '</code></span></div>' +
+      '  <div class="page-head"><h2>场次详情</h2><span class="sub"><code>GET /api/screening/' + esc(id) + '</code></span></div>' +
       '  <div class="card"><div class="card-body" id="tdBody">' + UI.skeletonRows(3) + '</div></div>' +
       '</div>';
     var host = document.getElementById('tdBody');
-    if (!API.hasToken()) { loginRequired(host, '车次接口需要登录'); return; }
+    if (!API.hasToken()) { loginRequired(host, '场次接口需要登录'); return; }
     API.train.detail(id).then(function (t) {
-      var st = t.stations || [];
+      var st = t.halls || [];
       host.innerHTML =
         '<div class="route-summary" style="margin-bottom:14px">' +
-        '  <span class="big">' + esc(t.trainNo) + '</span>' +
-        '  <span>' + esc(t.trainName || '') + '</span>' +
+        '  <span class="big">' + esc(t.screeningNo) + '</span>' +
+        '  <span>' + esc(t.movieName || '') + '</span>' +
         '  <span class="muted">发车 ' + esc(hm(t.startTime)) + '　到达 ' + esc(hm(t.endTime)) + '　状态 ' + (t.status === 1 ? '运行' : '停运') + '</span></div>' +
         (st.length
           ? '<div class="timeline">' + st.map(function (s, i) {
             return '<div class="tl-item ' + (i === 0 ? 'first' : '') + ' ' + (i === st.length - 1 ? 'last' : '') + '">' +
               '<div class="time">' + esc(hm(s.leaveTime || s.arriveTime)) + '</div>' +
               '<div class="dot-col"><span class="dot"></span></div>' +
-              '<div><div class="name">' + esc(s.stationName) + '</div>' +
-              '<div class="meta">' + esc(s.stationCode || '') + '　累计 ' + (s.distanceKm || 0) + ' km</div></div>' +
+              '<div><div class="name">' + esc(s.cinemaName) + '</div>' +
+              '<div class="meta">' + esc(s.cinemaCode || '') + '　累计 ' + (s.rowCount || 0) + ' km</div></div>' +
               '<div class="stop">' + (s.stopMinutes ? '停 ' + s.stopMinutes + ' 分' : (i === 0 ? '始发' : '终到')) + '</div></div>';
           }).join('') + '</div>'
-          : '<div class="empty-state">该接口暂未返回经停站数据（后端 TrainServiceImpl.getTrainDetail 的 TODO）</div>') +
+          : '<div class="empty-state">该接口暂未返回影厅数据（后端 TrainServiceImpl.getTrainDetail 的 TODO）</div>') +
         '<div class="hint-box" style="margin-top:14px">' +
-        '  换乘/购票：<a href="/api/ticket/remain' + API.query({ trainId: t.id }) + '">查看余票</a></div>';
+        '  换乘/购票：<a href="/api/ticket/remain' + API.query({ screeningId: t.id }) + '">查看余票</a></div>';
     }).catch(function (err) { errorBox(host, err); });
   }
 
@@ -456,17 +456,17 @@
      /api/ticket/remain　余票查询
      ====================================================================== */
   function remain() {
-    var trainId = param('trainId') || '1';
-    var travelDate = param('travelDate') || '2026-09-01';
-    var seatType = param('seatType') || '二等座';
+    var screeningId = param('screeningId') || '1';
+    var showDate = param('showDate') || '2026-09-01';
+    var ticketType = param('ticketType') || '二等座';
     app.innerHTML =
       '<div class="page" style="max-width:760px">' +
       '  <div class="page-head"><h2>余票查询</h2><span class="sub"><code>GET /api/ticket/remain</code></span></div>' +
       '  <div class="card"><div class="card-body">' +
       '    <div class="form-grid">' +
-      '      <div class="form-row"><label>车次 ID</label><input class="input" id="rmTrain" value="' + esc(trainId) + '"></div>' +
-      '      <div class="form-row"><label>乘车日期</label><input class="input" id="rmDate" value="' + esc(travelDate) + '"></div>' +
-      '      <div class="form-row"><label>席别</label><input class="input" id="rmSeat" value="' + esc(seatType) + '"></div>' +
+      '      <div class="form-row"><label>场次 ID</label><input class="input" id="rmTrain" value="' + esc(screeningId) + '"></div>' +
+      '      <div class="form-row"><label>放映日期</label><input class="input" id="rmDate" value="' + esc(showDate) + '"></div>' +
+      '      <div class="form-row"><label>票种</label><input class="input" id="rmSeat" value="' + esc(ticketType) + '"></div>' +
       '    </div>' +
       '    <button class="btn btn-primary" id="rmQuery">查询</button>' +
       '    <span class="muted" style="margin-left:10px;font-size:12px">后端 train_seat 只有 2026-09-01 的库存</span>' +
@@ -483,13 +483,13 @@
       var date = document.getElementById('rmDate').value.trim();
       var seat = document.getElementById('rmSeat').value.trim();
       host.innerHTML = UI.skeletonRows(1);
-      var path = '/api/ticket/remain' + API.query({ trainId: id, travelDate: date, seatType: seat });
+      var path = '/api/ticket/remain' + API.query({ screeningId: id, showDate: date, ticketType: seat });
       API.ticket.remain(id, date, seat).then(function (n) {
         host.innerHTML =
           '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
-          '  <span class="muted">车次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) + '</span>' +
+          '  <span class="muted">场次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) + '</span>' +
           '  <span style="font-size:26px;font-weight:700;color:var(--price)">' + n + ' 张</span>' +
-          '  <a class="btn btn-buy btn-sm" href="/api/ticket/buy' + API.query({ trainId: id, travelDate: date, seatType: seat }) + '">去购票</a>' +
+          '  <a class="btn btn-buy btn-sm" href="/api/ticket/buy' + API.query({ screeningId: id, showDate: date, ticketType: seat }) + '">去购票</a>' +
           '</div>';
         API.raw('GET', path).then(function (r) {
           document.getElementById('rmRaw').textContent = 'GET ' + path + '\n← HTTP ' + r.status + '\n\n' + (r.body || '');
@@ -506,13 +506,13 @@
      /api/ticket/buy　购票下单（POST /api/ticket/buy）
      ====================================================================== */
   function booking() {
-    var trainId = param('trainId'), travelDate = param('travelDate') || param('date');
-    var seatType = param('seatType') || param('seat');
+    var screeningId = param('screeningId'), showDate = param('showDate') || param('date');
+    var ticketType = param('ticketType') || param('seat');
     var count = Number(param('ticketCount') || 1);
-    if (!trainId || !travelDate) {
+    if (!screeningId || !showDate) {
       app.innerHTML = '<div class="page"><div class="card"><div class="empty-state"><strong>缺少参数</strong>' +
-        '请从「车次列表 / 余票查询」进入下单页（需要 trainId、travelDate）' +
-        '<div style="margin-top:14px"><a class="btn btn-primary" href="/api/train/page">去车次列表</a></div></div></div></div>';
+        '请从「场次列表 / 余票查询」进入下单页（需要 screeningId、showDate）' +
+        '<div style="margin-top:14px"><a class="btn btn-primary" href="/api/screening/page">去场次列表</a></div></div></div></div>';
       return;
     }
 
@@ -521,14 +521,14 @@
       '  <div class="page-head"><h2>购票下单</h2><span class="sub"><code>POST /api/ticket/buy</code></span></div>' +
       '  <div class="card"><div class="card-body">' +
       '    <div class="form-grid">' +
-      '      <div class="form-row"><label>车次 ID</label><input class="input" id="bkTrain" value="' + esc(trainId) + '"></div>' +
-      '      <div class="form-row"><label>乘车日期</label><input class="input" id="bkDate" value="' + esc(travelDate) + '"></div>' +
-      '      <div class="form-row"><label>席别</label><input class="input" id="bkSeat" value="' + esc(seatType || '二等座') + '"></div>' +
+      '      <div class="form-row"><label>场次 ID</label><input class="input" id="bkTrain" value="' + esc(screeningId) + '"></div>' +
+      '      <div class="form-row"><label>放映日期</label><input class="input" id="bkDate" value="' + esc(showDate) + '"></div>' +
+      '      <div class="form-row"><label>票种</label><input class="input" id="bkSeat" value="' + esc(ticketType || '二等座') + '"></div>' +
       '      <div class="form-row"><label>购票数量（1~5）</label><input class="input" id="bkCount" value="' + esc(count) + '"></div>' +
       '      <div class="form-row"><label>乘客姓名（可选）</label><input class="input" id="bkPassenger" placeholder="不填则记为「乘客」"></div>' +
       '      <div class="form-row"><label>证件号（可选）</label><input class="input" id="bkIdCard" placeholder="不填则留空"></div>' +
       '    </div>' +
-      '    <div class="hint-box">后端接受 trainId、travelDate、seatType、ticketCount，以及可选的 passengerName、idCardNo；' +
+      '    <div class="hint-box">后端接受 screeningId、showDate、ticketType、ticketCount，以及可选的 passengerName、idCardNo；' +
       '    乘客信息会写入订单明细表 train_order_item。</div>' +
       '    <button class="btn btn-buy btn-lg" style="width:100%;margin-top:14px" id="bkSubmit">提交订单</button>' +
       '  </div>' +
@@ -539,9 +539,9 @@
 
     document.getElementById('bkSubmit').onclick = function () {
       var payload = {
-        trainId: Number(document.getElementById('bkTrain').value.trim()),
-        travelDate: document.getElementById('bkDate').value.trim(),
-        seatType: document.getElementById('bkSeat').value.trim(),
+        screeningId: Number(document.getElementById('bkTrain').value.trim()),
+        showDate: document.getElementById('bkDate').value.trim(),
+        ticketType: document.getElementById('bkSeat').value.trim(),
         ticketCount: Number(document.getElementById('bkCount').value.trim())
       };
       var pName = document.getElementById('bkPassenger').value.trim();
@@ -608,7 +608,7 @@
       };
       var filtered = list.filter(function (o) { return tab === 'ALL' || String(o.status) === String(tab); });
       host.innerHTML = filtered.length ? filtered.map(orderCard).join('')
-        : '<div class="card"><div class="empty-state"><strong>暂无订单</strong>去车次列表下单试试</div></div>';
+        : '<div class="card"><div class="empty-state"><strong>暂无订单</strong>去场次列表下单试试</div></div>';
       host.querySelectorAll('[data-act]').forEach(function (b) {
         b.onclick = function () {
           var no = b.getAttribute('data-no'), act = b.getAttribute('data-act');
@@ -644,8 +644,8 @@
       '  <div class="order-top"><span>订单号 ' + esc(o.orderNo) + '　下单时间 ' + esc(o.createTime || '-') + '</span>' +
       '    <span class="order-status ' + statusClass(s) + '">' + statusText(s) + '</span></div>' +
       '  <div class="order-main">' +
-      '    <div><div class="order-meta">车次 ID：' + esc(o.trainId) + '　乘车日期：' + esc(o.travelDate || '-') + '</div>' +
-      '      <div class="order-meta">席别：' + esc(o.seatType || '-') + '　数量：' + (o.ticketCount || 0) + ' 张</div></div>' +
+      '    <div><div class="order-meta">场次 ID：' + esc(o.screeningId) + '　放映日期：' + esc(o.showDate || '-') + '</div>' +
+      '      <div class="order-meta">票种：' + esc(o.ticketType || '-') + '　数量：' + (o.ticketCount || 0) + ' 张</div></div>' +
       '    <div class="order-side"><div class="amount">' + money(o.totalAmount) + '</div></div>' +
       '  </div>' +
       '  <div class="order-actions">' +
@@ -665,9 +665,9 @@
       '<table class="data-table">' +
       '<tr><th style="width:130px">订单号</th><td>' + esc(o.orderNo) + '</td></tr>' +
       '<tr><th>状态</th><td>' + statusText(Number(o.status)) + '</td></tr>' +
-      '<tr><th>车次 ID</th><td>' + esc(o.trainId) + '</td></tr>' +
-      '<tr><th>乘车日期</th><td>' + esc(o.travelDate || '-') + '</td></tr>' +
-      '<tr><th>席别 / 数量</th><td>' + esc(o.seatType || '-') + ' × ' + (o.ticketCount || 0) + '</td></tr>' +
+      '<tr><th>场次 ID</th><td>' + esc(o.screeningId) + '</td></tr>' +
+      '<tr><th>放映日期</th><td>' + esc(o.showDate || '-') + '</td></tr>' +
+      '<tr><th>票种 / 数量</th><td>' + esc(o.ticketType || '-') + ' × ' + (o.ticketCount || 0) + '</td></tr>' +
       '<tr><th>金额</th><td>' + money(o.totalAmount) + '</td></tr>' +
       '<tr><th>支付截止</th><td>' + esc(o.payExpireTime || '-') + '</td></tr>' +
       '<tr><th>下单时间</th><td>' + esc(o.createTime || '-') + '</td></tr>' +
@@ -699,7 +699,7 @@
     var path = location.pathname;
     var initial = /stock\/publish/.test(path) ? 'publish'
       : /admin\/train/.test(path) ? 'trains'
-        : /admin\/station/.test(path) ? 'stations'
+        : /admin\/station/.test(path) ? 'halls'
           : 'publish';
 
     app.innerHTML =
@@ -709,8 +709,8 @@
       '  <div class="admin-layout">' +
       '    <div class="card side-nav">' +
       '      <button data-view="publish">放票 / 库存预热</button>' +
-      '      <button data-view="trains">车次维护</button>' +
-      '      <button data-view="stations">车站维护</button>' +
+      '      <button data-view="trains">场次维护</button>' +
+      '      <button data-view="halls">影院维护</button>' +
       '      <button data-view="stock">余票查询</button>' +
       '      <button data-view="logs">接口调用日志</button>' +
       '    </div>' +
@@ -720,7 +720,7 @@
     var body = document.getElementById('adminBody');
     if (!API.hasToken()) { loginRequired(body, '管理控制台需要登录'); return; }
 
-    var VIEWS = { publish: loadPublish, trains: loadTrains, stations: loadStations, stock: loadStock, logs: loadLogs };
+    var VIEWS = { publish: loadPublish, trains: loadTrains, halls: loadStations, stock: loadStock, logs: loadLogs };
 
     function show(view) {
       document.querySelectorAll('.side-nav button').forEach(function (x) {
@@ -751,9 +751,9 @@
         '    <span class="muted" style="font-size:12px"><code>POST /api/admin/stock/publish</code> · 仅 ADMIN</span></div>' +
         '  <div class="card-body">' +
         '    <div class="form-grid">' +
-        '      <div class="form-row"><label>车次 ID</label><input class="input" id="pbTrain" value="1"></div>' +
-        '      <div class="form-row"><label>乘车日期</label><input class="input" id="pbDate" value="' + today(1) + '"></div>' +
-        '      <div class="form-row"><label>席别</label><select class="input" id="pbSeat">' +
+        '      <div class="form-row"><label>场次 ID</label><input class="input" id="pbTrain" value="1"></div>' +
+        '      <div class="form-row"><label>放映日期</label><input class="input" id="pbDate" value="' + today(1) + '"></div>' +
+        '      <div class="form-row"><label>票种</label><select class="input" id="pbSeat">' +
         '        <option>二等座</option><option>一等座</option><option>商务座</option>' +
         '        <option>硬卧</option><option>软卧</option><option>硬座</option><option>无座</option></select></div>' +
         '      <div class="form-row"><label>放票数量</label><input class="input" id="pbCount" value="100"></div>' +
@@ -765,8 +765,8 @@
         '    </div>' +
         '    <div class="muted" style="margin-top:12px;font-size:12px;line-height:1.9">' +
         '      这个接口做两件事：<br>' +
-        '      ① 写 <code>train_seat</code>（该「车次+日期+席别」不存在则插入，已存在则 <b>total / remain 一起累加</b>）<br>' +
-        '      ② 把最新余票 <b>预热进 Redis</b> 的 <code>ticket:stock:{trainId}:{date}:{seatType}</code><br>' +
+        '      ① 写 <code>train_seat</code>（该「场次+日期+票种」不存在则插入，已存在则 <b>total / remain 一起累加</b>）<br>' +
+        '      ② 把最新余票 <b>预热进 Redis</b> 的 <code>ticket:stock:{screeningId}:{date}:{ticketType}</code><br>' +
         '      <b>必须先放票，购票时 Redis 里才有库存可扣。</b>' +
         '    </div>' +
         '  </div>' +
@@ -777,9 +777,9 @@
       var out = document.getElementById('pbResult');
       function vals() {
         return {
-          trainId: document.getElementById('pbTrain').value.trim(),
-          travelDate: document.getElementById('pbDate').value.trim(),
-          seatType: document.getElementById('pbSeat').value,
+          screeningId: document.getElementById('pbTrain').value.trim(),
+          showDate: document.getElementById('pbDate').value.trim(),
+          ticketType: document.getElementById('pbSeat').value,
           count: document.getElementById('pbCount').value.trim()
         };
       }
@@ -789,13 +789,13 @@
         var v = vals();
         out.innerHTML = '调用中…';
         API.admin.publishStock({
-          trainId: Number(v.trainId), travelDate: v.travelDate,
-          seatType: v.seatType, count: Number(v.count)
+          screeningId: Number(v.screeningId), showDate: v.showDate,
+          ticketType: v.ticketType, count: Number(v.count)
         }).then(function (remain) {
           var ok = remain > 0;
           out.innerHTML =
             '<div>' + (ok ? '<span class="tag-real">成功</span>' : '<span class="tag-mock">注意</span>') +
-            '　车次 ' + esc(v.trainId) + '　' + esc(v.travelDate) + '　' + esc(v.seatType) +
+            '　场次 ' + esc(v.screeningId) + '　' + esc(v.showDate) + '　' + esc(v.ticketType) +
             '　放票 ' + esc(v.count) + ' 张</div>' +
             '<div style="margin-top:6px;font-size:16px">接口返回的最新余票：<b style="color:var(--price)">' + esc(String(remain)) + '</b></div>' +
             (ok ? '' : '<div class="muted" style="margin-top:6px;font-size:12px">返回 0 说明 StockService.publish 还没有把 remain 返回出来（见「任务 2-2」）</div>');
@@ -808,8 +808,8 @@
       document.getElementById('pbAfter').onclick = function () {
         var v = vals();
         out.innerHTML = '查询中…';
-        API.ticket.remain(v.trainId, v.travelDate, v.seatType).then(function (n) {
-          out.innerHTML = '车次 ' + esc(v.trainId) + '　' + esc(v.travelDate) + '　' + esc(v.seatType) +
+        API.ticket.remain(v.screeningId, v.showDate, v.ticketType).then(function (n) {
+          out.innerHTML = '场次 ' + esc(v.screeningId) + '　' + esc(v.showDate) + '　' + esc(v.ticketType) +
             ' → 当前余票 <b style="color:var(--price);font-size:20px">' + esc(String(n)) + '</b> 张';
         }).catch(function (err) {
           out.innerHTML = '<span class="muted">查询失败：' + esc(err.message || '') + '</span>';
@@ -817,22 +817,22 @@
       };
     }
 
-    /* ---------------- ② 车次维护 ---------------- */
+    /* ---------------- ② 场次维护 ---------------- */
     function loadTrains() {
-      body.innerHTML = '<div class="card"><div class="card-head"><h3>车次维护</h3>' +
-        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/train/{trainId}</code> · 改完会清 <code>railway:cache:train::id</code></span></div>' +
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>场次维护</h3>' +
+        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/train/{screeningId}</code> · 改完会清 <code>railway:cache:train::id</code></span></div>' +
         '<div class="table-wrap"><table class="data-table" id="adTrainTable"></table></div></div>';
       API.train.page({ page: 1, size: 20 }).then(function (p) {
         var records = (p && p.records) || [];
         document.getElementById('adTrainTable').innerHTML =
-          '<tr><th>ID</th><th>车次</th><th>名称（可改）</th><th>始发</th><th>终到</th><th>发车</th><th>到达</th>' +
+          '<tr><th>ID</th><th>场次</th><th>名称（可改）</th><th>始发</th><th>终到</th><th>发车</th><th>到达</th>' +
           '<th>状态</th><th>操作</th></tr>' +
           (records.length ? records.map(function (t) {
             return '<tr><td class="num">' + t.id + '</td>' +
-              '<td><a href="/api/train/' + t.id + '"><b>' + esc(t.trainNo) + '</b></a></td>' +
-              '<td><input class="input" style="height:30px;min-width:150px" id="tn' + t.id + '" value="' + esc(t.trainName || '') + '"></td>' +
-              '<td class="num">' + (t.startStationId || '-') + '</td>' +
-              '<td class="num">' + (t.endStationId || '-') + '</td>' +
+              '<td><a href="/api/screening/' + t.id + '"><b>' + esc(t.screeningNo) + '</b></a></td>' +
+              '<td><input class="input" style="height:30px;min-width:150px" id="tn' + t.id + '" value="' + esc(t.movieName || '') + '"></td>' +
+              '<td class="num">' + (t.cinemaId || '-') + '</td>' +
+              '<td class="num">' + (t.hallId || '-') + '</td>' +
               '<td class="num">' + esc(hm(t.startTime)) + '</td>' +
               '<td class="num">' + esc(hm(t.endTime)) + '</td>' +
               '<td><select class="input" style="height:30px" id="ts' + t.id + '">' +
@@ -846,10 +846,10 @@
             var id = b.getAttribute('data-train');
             var name = document.getElementById('tn' + id).value.trim();
             var status = Number(document.getElementById('ts' + id).value);
-            API.admin.updateTrain(id, { trainName: name, status: status }).then(function () {
-              UI.toast('车次 ' + id + ' 已更新（缓存已清）');
+            API.admin.updateTrain(id, { movieName: name, status: status }).then(function () {
+              UI.toast('场次 ' + id + ' 已更新（缓存已清）');
               API.train.detail(id).then(function (d) {
-                UI.toast('重新读取：' + d.trainName + ' / ' + (d.status === 1 ? '运行' : '停运'));
+                UI.toast('重新读取：' + d.movieName + ' / ' + (d.status === 1 ? '运行' : '停运'));
               }).catch(function () {});
             }).catch(function (err) { UI.toast('更新失败：' + (err.message || ''), 'error'); });
           };
@@ -857,18 +857,18 @@
       }).catch(function (err) { body.innerHTML = '<div class="card"><div class="empty-state">' + esc(err.message || '') + '</div></div>'; });
     }
 
-    /* ---------------- ③ 车站维护 ---------------- */
+    /* ---------------- ③ 影院维护 ---------------- */
     function loadStations() {
-      body.innerHTML = '<div class="card"><div class="card-head"><h3>车站维护</h3>' +
-        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/station/{stationId}</code> · 改完清整个 station 缓存</span></div>' +
+      body.innerHTML = '<div class="card"><div class="card-head"><h3>影院维护</h3>' +
+        '<span class="muted" style="font-size:12px"><code>PUT /api/admin/station/{cinemaId}</code> · 改完清整个 station 缓存</span></div>' +
         '<div class="table-wrap"><table class="data-table" id="adStationTable"></table></div></div>';
       API.station.list().then(function (list) {
         var rows = (list || []);
         document.getElementById('adStationTable').innerHTML =
           '<tr><th>ID</th><th>电报码</th><th>站名（可改）</th><th>城市（可改）</th><th>操作</th></tr>' +
           (rows.length ? rows.map(function (s) {
-            return '<tr><td class="num">' + s.id + '</td><td class="num">' + esc(s.stationCode || '') + '</td>' +
-              '<td><input class="input" style="height:30px;min-width:120px" id="sn' + s.id + '" value="' + esc(s.stationName || '') + '"></td>' +
+            return '<tr><td class="num">' + s.id + '</td><td class="num">' + esc(s.cinemaCode || '') + '</td>' +
+              '<td><input class="input" style="height:30px;min-width:120px" id="sn' + s.id + '" value="' + esc(s.cinemaName || '') + '"></td>' +
               '<td><input class="input" style="height:30px;min-width:120px" id="sc' + s.id + '" value="' + esc(s.city || '') + '"></td>' +
               '<td><button class="btn btn-outline btn-sm" data-station="' + s.id + '">保存</button></td></tr>';
           }).join('') : '<tr><td class="muted">没有数据</td></tr>');
@@ -879,14 +879,14 @@
             var name = document.getElementById('sn' + id).value.trim();
             var city = document.getElementById('sc' + id).value.trim();
             if (!name) { UI.toast('站名不能为空', 'warn'); return; }
-            var body2 = { stationName: name };
+            var body2 = { cinemaName: name };
             if (city) { body2.city = city; }
             API.admin.updateStation(id, body2).then(function () {
-              UI.toast('车站 ' + id + ' 已更新');
+              UI.toast('影院 ' + id + ' 已更新');
               return API.station.list();
             }).then(function (fresh) {
               var hit = (fresh || []).filter(function (x) { return String(x.id) === String(id); })[0];
-              if (hit) { UI.toast('重新读取：' + hit.stationName + ' / ' + hit.city); }
+              if (hit) { UI.toast('重新读取：' + hit.cinemaName + ' / ' + hit.city); }
             }).catch(function (err) { UI.toast('更新失败：' + (err.message || ''), 'error'); });
           };
         });
@@ -898,9 +898,9 @@
       body.innerHTML = '<div class="card"><div class="card-head"><h3>余票查询</h3>' +
         '<span class="muted" style="font-size:12px"><code>GET /api/ticket/remain</code></span></div>' +
         '<div class="card-body"><div class="form-grid">' +
-        '  <div class="form-row"><label>车次 ID</label><input class="input" id="adTrain" value="1"></div>' +
-        '  <div class="form-row"><label>乘车日期</label><input class="input" id="adDate" value="' + today(1) + '"></div>' +
-        '  <div class="form-row"><label>席别</label><input class="input" id="adSeat" value="二等座"></div>' +
+        '  <div class="form-row"><label>场次 ID</label><input class="input" id="adTrain" value="1"></div>' +
+        '  <div class="form-row"><label>放映日期</label><input class="input" id="adDate" value="' + today(1) + '"></div>' +
+        '  <div class="form-row"><label>票种</label><input class="input" id="adSeat" value="二等座"></div>' +
         '</div><button class="btn btn-primary" id="adQuery">查询</button>' +
         '  <div class="muted" style="margin-top:10px;font-size:12px">' +
         '    返回的是 Redis 里的余票（缓存命中则不走库）。返回 0 可能是：<b>没放票</b>、或缓存里存的是空值标记。</div>' +
@@ -912,7 +912,7 @@
         var out = document.getElementById('adResult');
         out.innerHTML = '查询中…';
         API.ticket.remain(id, date, seat).then(function (n) {
-          out.innerHTML = '车次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) +
+          out.innerHTML = '场次 ' + esc(id) + '　' + esc(date) + '　' + esc(seat) +
             ' → <b style="color:var(--price);font-size:20px">' + esc(String(n)) + ' 张</b>';
         }).catch(function (err) {
           out.innerHTML = '<span class="muted">查询失败：' + esc(err.message || '') + '</span>';
@@ -943,12 +943,12 @@
     'POST /api/auth/register': function (v) { return API.auth.register({ username: v.username, password: v.password, nickname: v.nickname }); },
     'GET /api/user/me': function () { return API.auth.me(); },
     'POST /api/user/logout': function () { return API.auth.logout(); },
-    'GET /api/station/list': function () { return API.station.list(); },
-    'GET /api/train/page': function (v) { return API.train.page({ page: v.page, size: v.size, keyword: v.keyword }); },
-    'GET /api/train/{id}': function (v) { return API.train.detail(v.id); },
-    'GET /api/ticket/remain': function (v) { return API.ticket.remain(v.trainId, v.travelDate, v.seatType); },
+    'GET /api/cinema/list': function () { return API.station.list(); },
+    'GET /api/screening/page': function (v) { return API.train.page({ page: v.page, size: v.size, keyword: v.keyword }); },
+    'GET /api/screening/{id}': function (v) { return API.train.detail(v.id); },
+    'GET /api/ticket/remain': function (v) { return API.ticket.remain(v.screeningId, v.showDate, v.ticketType); },
     'POST /api/ticket/buy': function (v) {
-      return API.ticket.buy({ trainId: Number(v.trainId), travelDate: v.travelDate, seatType: v.seatType, ticketCount: Number(v.ticketCount) });
+      return API.ticket.buy({ screeningId: Number(v.screeningId), showDate: v.showDate, ticketType: v.ticketType, ticketCount: Number(v.ticketCount) });
     },
     'GET /api/order/my': function () { return API.order.my(); },
     'GET /api/order/{orderNo}': function (v) { return API.order.detail(v.orderNo); },
@@ -956,20 +956,20 @@
     'GET /api/admin/ping': function () { return API.admin.ping(); },
     'POST /api/admin/stock/publish': function (v) {
       return API.admin.publishStock({
-        trainId: Number(v.trainId), travelDate: v.travelDate,
-        seatType: v.seatType, count: Number(v.count)
+        screeningId: Number(v.screeningId), showDate: v.showDate,
+        ticketType: v.ticketType, count: Number(v.count)
       });
     },
-    'PUT /api/admin/train/{trainId}': function (v) {
+    'PUT /api/admin/train/{screeningId}': function (v) {
       var body = {};
-      if (v.trainName !== '' && v.trainName !== undefined) { body.trainName = v.trainName; }
+      if (v.movieName !== '' && v.movieName !== undefined) { body.movieName = v.movieName; }
       if (v.status !== '' && v.status !== undefined) { body.status = Number(v.status); }
-      return API.admin.updateTrain(v.trainId, body);
+      return API.admin.updateTrain(v.screeningId, body);
     },
-    'PUT /api/admin/station/{stationId}': function (v) {
-      var body = { stationName: v.stationName };
+    'PUT /api/admin/station/{cinemaId}': function (v) {
+      var body = { cinemaName: v.cinemaName };
       if (v.city) { body.city = v.city; }
-      return API.admin.updateStation(v.stationId, body);
+      return API.admin.updateStation(v.cinemaId, body);
     }
   };
 
@@ -1000,7 +1000,7 @@
         '<div id="probeLine">后端连通性：检测中…</div>';
       if (isFile) { document.getElementById('probeLine').textContent = '后端连通性：无法检测（file://）'; return; }
       var t0 = Date.now();
-      API.raw('GET', '/api/station/list').then(function (r) {
+      API.raw('GET', '/api/cinema/list').then(function (r) {
         var hint = r.status === 200 ? '正常（已登录）'
           : r.status === 401 ? '后端正常，但当前未登录'
             : r.status === 502 ? 'nginx 连不上后端（8080/8081 未启动？）'
@@ -1063,7 +1063,7 @@
       return url;
     }
     /* 带 bf（body fields）时，只把这些字段放进请求体；
-       不带则用全部字段——避免把路径参数（如 trainId）也塞进 JSON */
+       不带则用全部字段——避免把路径参数（如 screeningId）也塞进 JSON */
     function bodyOf(ep, v) {
       if (!ep.body) { return null; }
       if (!ep.bf) { return v; }
@@ -1115,7 +1115,7 @@
     home: home,
     login: login,
     profile: profile,
-    stations: stations,
+    halls: halls,
     trains: trains,
     trainDetail: trainDetail,
     remain: remain,

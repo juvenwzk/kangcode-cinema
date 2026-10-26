@@ -4,12 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.StockReleaseMessage;
-import com.kangcode.pojo.entity.TrainOrder;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainMapper;
-import com.kangcode.server.mapper.TrainOrderItemMapper;
-import com.kangcode.server.mapper.TrainOrderMapper;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.MovieOrder;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningMapper;
+import com.kangcode.server.mapper.MovieOrderItemMapper;
+import com.kangcode.server.mapper.MovieOrderMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
+import com.kangcode.server.mapper.StockReleaseLogMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,7 +42,7 @@ import static org.mockito.Mockito.when;
  * <p>核心考点：
  * <ol>
  *   <li>退票只针对"已支付(1) 或 已出票(3)"，改状态为 4（不是 2 已取消，也不是别的）；</li>
- *   <li>UPDATE 只能动 status / update_time，<b>绝不能误改 travel_date</b>（条件用 in，不用 or）；</li>
+ *   <li>UPDATE 只能动 status / update_time，<b>绝不能误改 show_date</b>（条件用 in，不用 or）；</li>
  *   <li>退票消息 reason = REFUND，和取消(CANCEL)/超时(TIMEOUT) 区分；</li>
  *   <li>归属校验 + 状态校验失败时都不发消息（否则库存会被多还一次）。</li>
  * </ol>
@@ -54,34 +55,34 @@ class P4RefundTest {
     private static final int ISSUED = 3;
     private static final int REFUNDED = 4;
 
-    private TrainOrderMapper orderMapper;
+    private MovieOrderMapper orderMapper;
     private TicketOrderProducer producer;
     private OrderServiceImpl service;
 
     /** Lambda Wrapper 要把方法引用解析成列名，得先有实体的元数据（纯单测里没有 Spring） */
     @BeforeAll
     static void initMp() {
-        MpLambdaSupport.init(TrainOrder.class, TrainSeat.class);
+        MpLambdaSupport.init(MovieOrder.class, ScreeningSeat.class);
     }
 
     @BeforeEach
     void setUp() {
-        orderMapper = mock(TrainOrderMapper.class);
+        orderMapper = mock(MovieOrderMapper.class);
         producer = mock(TicketOrderProducer.class);
-        service = new OrderServiceImpl(orderMapper, mock(TrainMapper.class),
-                mock(TrainSeatMapper.class), mock(TrainOrderItemMapper.class),
-                mock(StringRedisTemplate.class), producer);
+        service = new OrderServiceImpl(orderMapper, mock(ScreeningMapper.class),
+                mock(ScreeningSeatMapper.class), mock(MovieOrderItemMapper.class),
+                mock(StringRedisTemplate.class), producer, mock(StockReleaseLogMapper.class));
     }
 
     /** 造一张属于 userId=7 的订单 */
-    private TrainOrder order(int status) {
-        TrainOrder o = new TrainOrder();
+    private MovieOrder order(int status) {
+        MovieOrder o = new MovieOrder();
         o.setId(1L);
         o.setOrderNo("KR20261120000003");
         o.setUserId(7L);
-        o.setTrainId(2L);
-        o.setTravelDate(LocalDate.of(2026, 11, 20));
-        o.setSeatType("二等座");
+        o.setScreeningId(2L);
+        o.setShowDate(LocalDate.of(2026, 11, 20));
+        o.setTicketType("二等座");
         o.setTicketCount(1);
         o.setStatus(status);
         return o;
@@ -89,8 +90,8 @@ class P4RefundTest {
 
     /** 取出 refund 里那次 update 用的 wrapper */
     @SuppressWarnings("unchecked")
-    private LambdaUpdateWrapper<TrainOrder> captureUpdateWrapper() {
-        ArgumentCaptor<LambdaUpdateWrapper<TrainOrder>> cap =
+    private LambdaUpdateWrapper<MovieOrder> captureUpdateWrapper() {
+        ArgumentCaptor<LambdaUpdateWrapper<MovieOrder>> cap =
                 ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
         verify(orderMapper).update(isNull(), cap.capture());
         return cap.getValue();
@@ -109,9 +110,9 @@ class P4RefundTest {
 
         StockReleaseMessage msg = cap.getValue();
         assertEquals("KR20261120000003", msg.getOrderNo());
-        assertEquals(2L, msg.getTrainId().longValue(), "带上了车次，消费者才能定位库存 key");
-        assertEquals(LocalDate.of(2026, 11, 20), msg.getTravelDate());
-        assertEquals("二等座", msg.getSeatType());
+        assertEquals(2L, msg.getScreeningId().longValue(), "带上了场次，消费者才能定位库存 key");
+        assertEquals(LocalDate.of(2026, 11, 20), msg.getShowDate());
+        assertEquals("二等座", msg.getTicketType());
         assertEquals(1, msg.getTicketCount().intValue());
         assertEquals("REFUND", msg.getReason(), "退票的 reason 必须是 REFUND（取消是 CANCEL、超时是 TIMEOUT）");
     }
@@ -128,14 +129,14 @@ class P4RefundTest {
     }
 
     @Test
-    @DisplayName("P4-13 ⚠️ UPDATE 只能改 status/update_time，目标状态为 4，且绝不能碰 travel_date")
+    @DisplayName("P4-13 ⚠️ UPDATE 只能改 status/update_time，目标状态为 4，且绝不能碰 show_date")
     void updateOnlyTouchesStatusAndUpdateTime() {
         when(orderMapper.selectOne(any())).thenReturn(order(PAID));
         when(orderMapper.update(isNull(), any())).thenReturn(1);
 
         service.refund(7L, "KR20261120000003");
 
-        LambdaUpdateWrapper<TrainOrder> w = captureUpdateWrapper();
+        LambdaUpdateWrapper<MovieOrder> w = captureUpdateWrapper();
         String set = (w.getSqlSet() == null ? "" : w.getSqlSet()).toLowerCase();
         String where = (w.getSqlSegment() == null ? "" : w.getSqlSegment()).toLowerCase();
 
@@ -143,9 +144,9 @@ class P4RefundTest {
         assertTrue(set.contains("status"), "退票要改 status，实际 SET = " + w.getSqlSet());
         assertTrue(set.contains("update_time") || set.contains("updatetime"),
                 "退票要更新 updateTime，实际 SET = " + w.getSqlSet());
-        // 这是最隐蔽的坑：曾把 travelDate 当成 updateTime 写进去，把乘车日期覆盖成"当前时间"
+        // 这是最隐蔽的坑：曾把 showDate 当成 updateTime 写进去，把放映日期覆盖成"当前时间"
         assertFalse(set.contains("travel"),
-                "❌ 绝不能把乘车日期(travelDate/travel_date)写进 SET，实际 SET = " + w.getSqlSet());
+                "❌ 绝不能把放映日期(showDate/show_date)写进 SET，实际 SET = " + w.getSqlSet());
 
         // 目标状态必须是 4（已退票），而不是 2（已取消）
         Map<String, Object> params = w.getParamNameValuePairs();

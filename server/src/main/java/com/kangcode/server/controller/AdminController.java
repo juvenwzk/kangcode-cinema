@@ -4,12 +4,12 @@ import com.kangcode.common.core.Result;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
 import com.kangcode.framework.security.UserContext;
-import com.kangcode.pojo.dto.StationUpdateRequest;
+import com.kangcode.pojo.dto.CinemaUpdateRequest;
 import com.kangcode.pojo.dto.StockPublishRequest;
-import com.kangcode.pojo.dto.TrainUpdateRequest;
-import com.kangcode.server.service.StationService;
+import com.kangcode.pojo.dto.ScreeningUpdateRequest;
+import com.kangcode.server.service.CinemaService;
 import com.kangcode.server.service.StockService;
-import com.kangcode.server.service.TrainService;
+import com.kangcode.server.service.ScreeningService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +19,7 @@ import javax.validation.Valid;
  * 管理端接口
  *
  * <p>准备工程只提供 ping，用于验证「普通用户访问管理接口返回 403」这条拦截链路。
- * 后续放票、车次/车站维护等管理接口由你自己在这里新增。
+ * 后续放票、场次/影院维护等管理接口由你自己在这里新增。
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -27,8 +27,8 @@ import javax.validation.Valid;
 public class AdminController {
 
     private final StockService stockService;
-    private final TrainService trainService;
-    private final StationService stationService;
+    private final ScreeningService screeningService;
+    private final CinemaService cinemaService;
 
 
     @GetMapping("/ping")
@@ -48,24 +48,24 @@ public class AdminController {
         return Result.ok(stockService.publish(request));
     }
 
-    @PutMapping("/train/{trainId}")
-    public Result<Void> updateTrain(@PathVariable Long trainId,
-                                    @Valid @RequestBody TrainUpdateRequest request){
+    @PutMapping("/screening/{screeningId}")
+    public Result<Void> updateScreening(@PathVariable Long screeningId,
+                                    @Valid @RequestBody ScreeningUpdateRequest request){
         if(!UserContext.isAdmin()){
             throw new BusinessException(ResultCode.FORBIDDEN);
         }
-        trainService.updateTrain(trainId,request);
+        screeningService.updateScreening(screeningId,request);
         return Result.ok();
     }
 
 
-    @PutMapping("/station/{stationId}")
-    public Result<Void> updateStation(@PathVariable Long stationId,
-                                    @Valid @RequestBody StationUpdateRequest request){
+    @PutMapping("/cinema/{cinemaId}")
+    public Result<Void> updateCinema(@PathVariable Long cinemaId,
+                                    @Valid @RequestBody CinemaUpdateRequest request){
         if(!UserContext.isAdmin()){
             throw new BusinessException(ResultCode.FORBIDDEN);
         }
-        stationService.updateStation(stationId,request);
+        cinemaService.updateCinema(cinemaId,request);
         return Result.ok();
     }
 

@@ -15,15 +15,15 @@ import java.time.LocalDate;
 @Data
 public class TicketBuyRequest {
 
-    @NotNull(message = "车次不能为空")
-    private Long trainId;
+    @NotNull(message = "场次不能为空")
+    private Long screeningId;
 
-    @NotNull(message = "乘车日期不能为空")
+    @NotNull(message = "放映日期不能为空")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    @NotBlank(message = "席别不能为空")
-    private String seatType;
+    @NotBlank(message = "票种不能为空")
+    private String ticketType;
 
     @NotNull(message = "购票数量不能为空")
     @Min(value = 1, message = "购票数量至少 1 张")

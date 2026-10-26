@@ -13,18 +13,18 @@ import java.time.LocalDateTime;
  * 座位库存（热点表：库存预热到 Redis，扣减走 Redisson 锁 + 定时对账）
  */
 @Data
-@TableName("train_seat")
-public class TrainSeat {
+@TableName("screening_seat")
+public class ScreeningSeat {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    /** 席别：二等座/一等座/商务座/硬卧/软卧 */
-    private String seatType;
+    /** 票种：二等座/一等座/商务座/硬卧/软卧 */
+    private String ticketType;
 
     /** 总票数 */
     private Integer total;

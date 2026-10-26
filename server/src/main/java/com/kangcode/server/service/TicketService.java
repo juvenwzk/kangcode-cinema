@@ -13,7 +13,7 @@ public interface TicketService {
     /**
      * 余票查询：Redis 缓存优先（Spring Cache + 手写缓存），兜底查库回填
      */
-    Integer queryRemain(Long trainId, LocalDate travelDate, String seatType);
+    Integer queryRemain(Long screeningId, LocalDate showDate, String ticketType);
 
     /**
      * 购票：分布式锁 + Redis 原子预扣 -> 发送下单消息 -> 异步落库

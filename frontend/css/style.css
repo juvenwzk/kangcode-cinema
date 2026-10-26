@@ -1,5 +1,5 @@
 /* ==========================================================================
-   康轨 KangRail · 前端设计系统  v2
+   影票购票系统 · 前端设计系统  v2
    --------------------------------------------------------------------------
    本文件只改「看起来怎样」，不改任何类名和 DOM 结构，
    所以 js/pages.js、js/ui.js 生成的内容会自动跟着变好看。
@@ -326,7 +326,7 @@ img, svg { display: block; }
 .f-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 2px 8px var(--brand-glow); }
 
 /* ==========================================================================
-   车次列表
+   场次列表
    ========================================================================== */
 .train-table {
   background: #fff; border: 1px solid var(--line); border-radius: var(--radius-l);
@@ -380,7 +380,7 @@ img, svg { display: block; }
 .seat-box.disabled { background: #f7f8fa; opacity: .7; }
 
 /* ==========================================================================
-   车次详情（时刻表）
+   场次详情（时刻表）
    ========================================================================== */
 .detail-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .detail-route { display: flex; align-items: center; gap: 16px; font-size: 15px; }

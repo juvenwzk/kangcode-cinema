@@ -27,10 +27,10 @@ public class TicketController {
     private final TicketService ticketService;
 
     @GetMapping("/remain")
-    public Result<Integer> remain(@RequestParam Long trainId,
-                                  @RequestParam String travelDate,
-                                  @RequestParam String seatType) {
-        return Result.ok(ticketService.queryRemain(trainId, LocalDate.parse(travelDate), seatType));
+    public Result<Integer> remain(@RequestParam Long screeningId,
+                                  @RequestParam String showDate,
+                                  @RequestParam String ticketType) {
+        return Result.ok(ticketService.queryRemain(screeningId, LocalDate.parse(showDate), ticketType));
     }
 
     @PostMapping("/buy")

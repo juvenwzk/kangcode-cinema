@@ -60,7 +60,7 @@
   function renderAuth(tab, tip) {
     var isLogin = tab === 'login';
     var html =
-      '<h3>' + (isLogin ? '登录康轨平台' : '注册新账号') + '</h3>' +
+      '<h3>' + (isLogin ? '登录影票平台' : '注册新账号') + '</h3>' +
       (tip ? '<div class="hint-box" style="margin-bottom:14px;color:var(--red)">' + esc(tip) + '</div>' : '') +
       '<div class="form-row"><label>用户名</label><input class="input" id="auName" placeholder="请输入用户名" autocomplete="off"></div>' +
       '<div class="form-row"><label>密码</label><input class="input" id="auPwd" type="password" placeholder="请输入密码"></div>' +
@@ -157,7 +157,7 @@
   /* ---------------- 时刻表弹窗 ---------------- */
   function trainDetailModal(train, date) {
     openModal(
-      '<h3>' + esc(train.trainNo) + ' 时刻表</h3>' +
+      '<h3>' + esc(train.screeningNo) + ' 时刻表</h3>' +
       '<div class="muted" style="margin-bottom:12px">' + esc(train.from || '') + ' → ' + esc(train.to || '') +
       '　' + esc(date || '') + '</div>' +
       '<div id="detailBody" class="skeleton" style="height:180px"></div>' +
@@ -167,18 +167,18 @@
     document.getElementById('dtClose').onclick = closeModal;
 
     API.train.detail(train.id).then(function (d) {
-      var stations = d.stations || [];
-      var html = '<div class="timeline">' + stations.map(function (s, i) {
-        return '<div class="tl-item ' + (i === 0 ? 'first' : '') + ' ' + (i === stations.length - 1 ? 'last' : '') + '">' +
+      var halls = d.halls || [];
+      var html = '<div class="timeline">' + halls.map(function (s, i) {
+        return '<div class="tl-item ' + (i === 0 ? 'first' : '') + ' ' + (i === halls.length - 1 ? 'last' : '') + '">' +
           '<div class="time">' + (s.leaveTime || s.arriveTime || '').slice(0, 5) + '</div>' +
           '<div class="dot-col"><span class="dot"></span></div>' +
-          '<div><div class="name">' + esc(s.stationName) + '</div>' +
-          '<div class="meta">' + esc(s.stationCode || '') + '　累计 ' + (s.distanceKm || 0) + ' km</div></div>' +
+          '<div><div class="name">' + esc(s.cinemaName) + '</div>' +
+          '<div class="meta">' + esc(s.cinemaCode || '') + '　累计 ' + (s.rowCount || 0) + ' km</div></div>' +
           '<div class="stop">' + (s.stopMinutes ? '停 ' + s.stopMinutes + ' 分' : (i === 0 ? '始发' : '终到')) + '</div>' +
           '</div>';
       }).join('') + '</div>';
       var body = document.getElementById('detailBody');
-      if (body) { body.className = ''; body.innerHTML = stations.length ? html : '<div class="empty-state">暂无经停站数据</div>'; }
+      if (body) { body.className = ''; body.innerHTML = halls.length ? html : '<div class="empty-state">暂无影厅数据</div>'; }
     }).catch(function (err) {
       var body = document.getElementById('detailBody');
       if (body) { body.className = ''; body.innerHTML = '<div class="empty-state">' + esc(err.message || '加载失败') + '</div>'; }

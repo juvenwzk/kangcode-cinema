@@ -2,8 +2,8 @@ package com.kangcode.server.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.kangcode.common.core.Result;
-import com.kangcode.pojo.vo.TrainVO;
-import com.kangcode.server.service.TrainService;
+import com.kangcode.pojo.vo.ScreeningVO;
+import com.kangcode.server.service.ScreeningService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,25 +12,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 车次接口
+ * 场次接口
  */
 @RestController
-@RequestMapping("/api/train")
+@RequestMapping("/api/screening")
 @RequiredArgsConstructor
-public class TrainController {
+public class ScreeningController {
 
-    private final TrainService trainService;
+    private final ScreeningService screeningService;
 
     @GetMapping("/page")
-    public Result<IPage<TrainVO>> page(@RequestParam(defaultValue = "1") int page,
+    public Result<IPage<ScreeningVO>> page(@RequestParam(defaultValue = "1") int page,
                                        @RequestParam(defaultValue = "10") int size,
                                        @RequestParam(required = false) String keyword) {
-        return Result.ok(trainService.pageTrain(page, size, keyword));
+        return Result.ok(screeningService.pageScreening(page, size, keyword));
     }
 
     @GetMapping("/{id}")
-    public Result<TrainVO> detail(@PathVariable Long id) {
+    public Result<ScreeningVO> detail(@PathVariable Long id) {
 
-        return Result.ok(trainService.getTrainDetail(id));
+        return Result.ok(screeningService.getScreeningDetail(id));
     }
 }

@@ -3,12 +3,13 @@ package com.kangcode.server;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.StockReleaseMessage;
-import com.kangcode.pojo.entity.TrainOrder;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainMapper;
-import com.kangcode.server.mapper.TrainOrderItemMapper;
-import com.kangcode.server.mapper.TrainOrderMapper;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.MovieOrder;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningMapper;
+import com.kangcode.server.mapper.MovieOrderItemMapper;
+import com.kangcode.server.mapper.MovieOrderMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
+import com.kangcode.server.mapper.StockReleaseLogMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,34 +46,34 @@ class P4CancelTest {
     private static final int PAID = 1;
     private static final int CANCELED = 2;
 
-    private TrainOrderMapper orderMapper;
+    private MovieOrderMapper orderMapper;
     private TicketOrderProducer producer;
     private OrderServiceImpl service;
 
     /** Lambda Wrapper 要把方法引用解析成列名，得先有实体的元数据（纯单测里没有 Spring） */
     @BeforeAll
     static void initMp() {
-        MpLambdaSupport.init(TrainOrder.class, TrainSeat.class);
+        MpLambdaSupport.init(MovieOrder.class, ScreeningSeat.class);
     }
 
     @BeforeEach
     void setUp() {
-        orderMapper = mock(TrainOrderMapper.class);
+        orderMapper = mock(MovieOrderMapper.class);
         producer = mock(TicketOrderProducer.class);
-        service = new OrderServiceImpl(orderMapper, mock(TrainMapper.class),
-                mock(TrainSeatMapper.class), mock(TrainOrderItemMapper.class),
-                mock(StringRedisTemplate.class), producer);
+        service = new OrderServiceImpl(orderMapper, mock(ScreeningMapper.class),
+                mock(ScreeningSeatMapper.class), mock(MovieOrderItemMapper.class),
+                mock(StringRedisTemplate.class), producer, mock(StockReleaseLogMapper.class));
     }
 
     /** 造一张属于 userId=7 的订单 */
-    private TrainOrder order(int status) {
-        TrainOrder o = new TrainOrder();
+    private MovieOrder order(int status) {
+        MovieOrder o = new MovieOrder();
         o.setId(1L);
         o.setOrderNo("KR20261120000001");
         o.setUserId(7L);
-        o.setTrainId(2L);
-        o.setTravelDate(LocalDate.of(2026, 11, 20));
-        o.setSeatType("二等座");
+        o.setScreeningId(2L);
+        o.setShowDate(LocalDate.of(2026, 11, 20));
+        o.setTicketType("二等座");
         o.setTicketCount(1);
         o.setStatus(status);
         return o;
@@ -91,9 +92,9 @@ class P4CancelTest {
 
         StockReleaseMessage msg = cap.getValue();
         assertEquals("KR20261120000001", msg.getOrderNo());
-        assertEquals(2L, msg.getTrainId().longValue(), "带上了车次，消费者才能定位库存 key");
-        assertEquals(LocalDate.of(2026, 11, 20), msg.getTravelDate());
-        assertEquals("二等座", msg.getSeatType());
+        assertEquals(2L, msg.getScreeningId().longValue(), "带上了场次，消费者才能定位库存 key");
+        assertEquals(LocalDate.of(2026, 11, 20), msg.getShowDate());
+        assertEquals("二等座", msg.getTicketType());
         assertEquals(1, msg.getTicketCount().intValue());
         assertEquals("CANCEL", msg.getReason(), "取消的 reason 必须是 CANCEL（超时是 TIMEOUT）");
     }

@@ -8,8 +8,8 @@ import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.OrderCreateMessage;
 import com.kangcode.pojo.dto.TicketBuyRequest;
 import com.kangcode.pojo.vo.TicketBuyVO;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.TicketService;
 import lombok.RequiredArgsConstructor;
@@ -55,16 +55,16 @@ public class  TicketServiceImpl implements TicketService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final RedissonClient redissonClient;
-    private final TrainSeatMapper trainSeatMapper;
+    private final ScreeningSeatMapper screeningSeatMapper;
     private final TicketOrderProducer ticketOrderProducer;
     private final DefaultRedisScript<Long> stockDeductScript;
 
     @Override
-    public Integer queryRemain(Long trainId, LocalDate travelDate, String seatType) {
-        String date = travelDate.toString();
-        // 注意：余票必须用「库存 key」ticket:stock:*，不能用「锁 key」ticket:lock:*。
+    public Integer queryRemain(Long screeningId, LocalDate showDate, String ticketType) {
+        String date = showDate.toString();
+        // 注意：余票必须用「库存 key」screening:stock:*，不能用「锁 key」screening:lock:*。
         // 锁 key 归 Redisson 的 RLock 使用（Hash 结构），把余票字符串写进去会导致购票时 WRONGTYPE。
-        String key = RedisKeyConstant.ticketStockKey(trainId, date, seatType);
+        String key = RedisKeyConstant.ticketStockKey(screeningId, date, ticketType);
 
         // 1. 缓存命中直接返回
         String cached = stringRedisTemplate.opsForValue().get(key);
@@ -80,7 +80,7 @@ public class  TicketServiceImpl implements TicketService {
         if (Boolean.TRUE.equals(got)) {
             // 抢到锁 → 查库+写缓存
             try {
-                return loadFromDbAndCache(key, trainId, travelDate, seatType);
+                return loadFromDbAndCache(key, screeningId, showDate, ticketType);
             } finally {
                 stringRedisTemplate.delete(rebuildLockKey);
             }
@@ -101,16 +101,16 @@ public class  TicketServiceImpl implements TicketService {
         }
 
         // 4. 兜底：直查 DB
-        return loadFromDbAndCache(key, trainId, travelDate, seatType);
+        return loadFromDbAndCache(key, screeningId, showDate, ticketType);
     }
 
     /** 从数据库加载余票并写入缓存 */
-    private Integer loadFromDbAndCache(String key, Long trainId,
-                                       LocalDate travelDate, String seatType) {
-        TrainSeat seat = trainSeatMapper.selectOne(new LambdaQueryWrapper<TrainSeat>()
-                .eq(TrainSeat::getTrainId, trainId)
-                .eq(TrainSeat::getTravelDate, travelDate)
-                .eq(TrainSeat::getSeatType, seatType));
+    private Integer loadFromDbAndCache(String key, Long screeningId,
+                                       LocalDate showDate, String ticketType) {
+        ScreeningSeat seat = screeningSeatMapper.selectOne(new LambdaQueryWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, screeningId)
+                .eq(ScreeningSeat::getShowDate, showDate)
+                .eq(ScreeningSeat::getTicketType, ticketType));
 
         if (seat == null) {
             stringRedisTemplate.opsForValue()
@@ -126,23 +126,23 @@ public class  TicketServiceImpl implements TicketService {
 
     @Override
     public TicketBuyVO buy(TicketBuyRequest request, Long userId) {
-        // ① 幂等校验（order:dup:{userId}:{trainId}:{travelDate}）
-        Long trainId=request.getTrainId();
-        LocalDate travelDate=request.getTravelDate();
-        String date=travelDate.toString();
-        String seatType=request.getSeatType();
+        // ① 幂等校验（order:dup:{userId}:{screeningId}:{showDate}）
+        Long screeningId=request.getScreeningId();
+        LocalDate showDate=request.getShowDate();
+        String date=showDate.toString();
+        String ticketType=request.getTicketType();
         Integer count=request.getTicketCount();
-        String stockKey=RedisKeyConstant.ticketStockKey(trainId,date,seatType);
+        String stockKey=RedisKeyConstant.ticketStockKey(screeningId,date,ticketType);
 
-        String dupKey=RedisKeyConstant.orderDupKey(userId,trainId,date);
+        String dupKey=RedisKeyConstant.orderDupKey(userId,screeningId,date);
         Boolean first=stringRedisTemplate.opsForValue()
                 .setIfAbsent(dupKey,"1",DUP_TTL_SECONDS,TimeUnit.SECONDS);
 
         if(!Boolean.TRUE.equals(first)) {
         throw new BusinessException(ResultCode.ORDER_REPEATED);
         }
-        //      2. Redisson 分布式锁（ticket:lock:{trainId}:{date}:{seatType}）
-        RLock lock=redissonClient.getLock(RedisKeyConstant.ticketLockKey(trainId,date,seatType));        boolean locked=false;
+        //      2. Redisson 分布式锁（screening:lock:{screeningId}:{date}:{ticketType}）
+        RLock lock=redissonClient.getLock(RedisKeyConstant.ticketLockKey(screeningId,date,ticketType));        boolean locked=false;
         boolean deducted=false;
         try {
             locked=lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
@@ -160,7 +160,7 @@ public class  TicketServiceImpl implements TicketService {
                 throw new BusinessException(ResultCode.SYSTEM_ERROR);
             }
             if(result==-2L){
-                throw new BusinessException(ResultCode.STOCK_NOT_ENOUGH.getCode(),"该车次还没有放票，请稍后再试");
+                throw new BusinessException(ResultCode.STOCK_NOT_ENOUGH.getCode(),"该场次还没有放票，请稍后再试");
             }
             if (result == -1L) {
                 throw new BusinessException(ResultCode.STOCK_NOT_ENOUGH);
@@ -169,16 +169,16 @@ public class  TicketServiceImpl implements TicketService {
             log.info("预扣库存成功 key={} 剩余={} userId={}", stockKey, result, userId);
 
             //      4. 生成订单号（Redis INCR 每日序列）
-            String orderNo=generateOrderNo(travelDate);
+            String orderNo=generateOrderNo(showDate);
 
             //      5. 发送 RabbitMQ 下单消息（异步落库订单）
             ticketOrderProducer.sendOrderCreate(OrderCreateMessage.builder()
                     .messageId(orderNo)
                     .orderNo(orderNo)
                     .userId(userId)
-                    .trainId(trainId)
-                    .travelDate(travelDate)
-                    .seatType(seatType)
+                    .screeningId(screeningId)
+                    .showDate(showDate)
+                    .ticketType(ticketType)
                     .ticketCount(count)
                     .passengerName(request.getPassengerName())
                     .idCardNo(request.getIdCardNo())
@@ -210,10 +210,10 @@ public class  TicketServiceImpl implements TicketService {
     }
 
     /**
-     * 订单号：KR + 乘车日期 + 6 位每日序号，例如 KR20261005000001
+     * 订单号：KR + 放映日期 + 6 位每日序号，例如 KR20261005000001
      */
-    private String generateOrderNo(LocalDate travelDate) {
-        String day = travelDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    private String generateOrderNo(LocalDate showDate) {
+        String day = showDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         Long seq = stringRedisTemplate.opsForValue().increment(RedisKeyConstant.orderSeqKey(day));
         long value = seq == null ? 1L : seq;
         return "KR" + day + String.format("%06d", value);

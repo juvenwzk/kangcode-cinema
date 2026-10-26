@@ -6,25 +6,35 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
- * 车站
+ * 场次
  */
 @Data
-@TableName("station")
-public class Station {
+@TableName("screening")
+public class Screening {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /** 车站电报码/站码 */
-    private String stationCode;
+    /** 场次号，如 G1001 */
+    private String screeningNo;
 
-    private String stationName;
+    private String movieName;
 
-    private String city;
+    private Long cinemaId;
 
+    private Long hallId;
+
+    private LocalTime startTime;
+
+    private LocalTime endTime;
+
+    /** 状态：0 停运 1 运行 */
     private Integer status;
 
     private LocalDateTime createTime;
+
+    private LocalDateTime updateTime;
 }

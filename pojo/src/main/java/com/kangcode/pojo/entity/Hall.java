@@ -8,27 +8,27 @@ import lombok.Data;
 import java.time.LocalTime;
 
 /**
- * 车次经停站
+ * 场次影厅
  */
 @Data
-@TableName("train_station")
-public class TrainStation {
+@TableName("hall")
+public class Hall {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private Long stationId;
+    private Long cinemaId;
 
     /** 到站顺序，1 为始发 */
-    private Integer stationNo;
+    private Integer hallNo;
 
-    private LocalTime arriveTime;
+    private LocalTime openTime;
 
-    private LocalTime leaveTime;
+    private LocalTime closeTime;
 
-    private Integer stopMinutes;
+    private Integer cleanupMinutes;
 
-    private Integer distanceKm;
+    private Integer rowCount;
 }

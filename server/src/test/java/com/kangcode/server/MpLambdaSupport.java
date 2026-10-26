@@ -8,7 +8,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
  * 纯 Mockito 单元测试的 MyBatis-Plus 支持类。
  *
  * <p><b>为什么需要它？</b>
- * <p>{@code new LambdaQueryWrapper<TrainOrder>().eq(TrainOrder::getStatus, 0)} 这种写法，
+ * <p>{@code new LambdaQueryWrapper<MovieOrder>().eq(MovieOrder::getStatus, 0)} 这种写法，
  * MyBatis-Plus 要在构造时就"解析方法引用 → 得到列名"，而这个解析依赖实体的元数据
  * （{@code TableInfo}）。 正常启动 Spring 时由 MyBatis 自动初始化；但在纯单元测试里
  * 没有 Spring，元数据是空的，于是抛：

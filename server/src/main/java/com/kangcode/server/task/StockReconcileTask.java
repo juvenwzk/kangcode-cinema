@@ -2,8 +2,8 @@ package com.kangcode.server.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kangcode.common.constant.RedisKeyConstant;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -34,25 +34,25 @@ public class StockReconcileTask {
     /** 对账写回的 TTL */
     private static final long STOCK_CACHE_MINUTES = 30;
 
-    private final TrainSeatMapper trainSeatMapper;
+    private final ScreeningSeatMapper screeningSeatMapper;
     private final StringRedisTemplate stringRedisTemplate;
 
     /** 启动 1 分钟后跑第一次，之后每 5 分钟一次 */
     @Scheduled(initialDelay = 60_000, fixedDelay = 5 * 60 * 1000)
     public void reconcile() {
         LocalDate today = LocalDate.now();
-        List<TrainSeat> seats = trainSeatMapper.selectList(new LambdaQueryWrapper<TrainSeat>()
-                .ge(TrainSeat::getTravelDate, today)
-                .le(TrainSeat::getTravelDate, today.plusDays(DAYS_AHEAD))
-                .eq(TrainSeat::getStatus, 1));
+        List<ScreeningSeat> seats = screeningSeatMapper.selectList(new LambdaQueryWrapper<ScreeningSeat>()
+                .ge(ScreeningSeat::getShowDate, today)
+                .le(ScreeningSeat::getShowDate, today.plusDays(DAYS_AHEAD))
+                .eq(ScreeningSeat::getStatus, 1));
 
         int preheated = 0;
         int tightened = 0;
         int inFlight = 0;
 
-        for (TrainSeat seat : seats) {
+        for (ScreeningSeat seat : seats) {
             String key = RedisKeyConstant.ticketStockKey(
-                    seat.getTrainId(), seat.getTravelDate().toString(), seat.getSeatType());
+                    seat.getScreeningId(), seat.getShowDate().toString(), seat.getTicketType());
             String cached = stringRedisTemplate.opsForValue().get(key);
             int dbRemain = seat.getRemain();
 

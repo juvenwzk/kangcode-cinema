@@ -1,11 +1,12 @@
 package com.kangcode.server;
 
-import com.kangcode.pojo.entity.TrainOrder;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainMapper;
-import com.kangcode.server.mapper.TrainOrderItemMapper;
-import com.kangcode.server.mapper.TrainOrderMapper;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.MovieOrder;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningMapper;
+import com.kangcode.server.mapper.MovieOrderItemMapper;
+import com.kangcode.server.mapper.MovieOrderMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
+import com.kangcode.server.mapper.StockReleaseLogMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,23 +33,23 @@ import static org.mockito.Mockito.when;
  */
 class P4PayCallbackTest {
 
-    private TrainOrderMapper orderMapper;
+    private MovieOrderMapper orderMapper;
     private TicketOrderProducer producer;
     private OrderServiceImpl service;
 
     /** Lambda Wrapper 要把方法引用解析成列名，得先有实体的元数据（纯单测里没有 Spring） */
     @BeforeAll
     static void initMp() {
-        MpLambdaSupport.init(TrainOrder.class, TrainSeat.class);
+        MpLambdaSupport.init(MovieOrder.class, ScreeningSeat.class);
     }
 
     @BeforeEach
     void setUp() {
-        orderMapper = mock(TrainOrderMapper.class);
+        orderMapper = mock(MovieOrderMapper.class);
         producer = mock(TicketOrderProducer.class);
-        service = new OrderServiceImpl(orderMapper, mock(TrainMapper.class),
-                mock(TrainSeatMapper.class), mock(TrainOrderItemMapper.class),
-                mock(StringRedisTemplate.class), producer);
+        service = new OrderServiceImpl(orderMapper, mock(ScreeningMapper.class),
+                mock(ScreeningSeatMapper.class), mock(MovieOrderItemMapper.class),
+                mock(StringRedisTemplate.class), producer, mock(StockReleaseLogMapper.class));
     }
 
     @Test

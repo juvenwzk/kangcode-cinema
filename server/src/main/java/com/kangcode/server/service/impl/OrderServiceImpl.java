@@ -50,28 +50,28 @@ public class OrderServiceImpl implements OrderService {
     /** 支付超时时间（分钟） */
     private static final int PAY_TIMEOUT_MINUTES = 30;  // ← P3 已经加过了
 
-    private final TrainOrderMapper trainOrderMapper;
-    private final TrainMapper trainMapper;
-    private final TrainSeatMapper trainSeatMapper;
-    private final TrainOrderItemMapper trainOrderItemMapper;
+    private final MovieOrderMapper movieOrderMapper;
+    private final ScreeningMapper screeningMapper;
+    private final ScreeningSeatMapper screeningSeatMapper;
+    private final MovieOrderItemMapper movieOrderItemMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final TicketOrderProducer ticketOrderProducer;
     private final StockReleaseLogMapper stockReleaseLogMapper;
 
     @Override
     public List<OrderVO> listMyOrders(Long userId) {
-        List<TrainOrder> orders = trainOrderMapper.selectList(new LambdaQueryWrapper<TrainOrder>()
-                .eq(TrainOrder::getUserId, userId)
-                .orderByDesc(TrainOrder::getCreateTime));
+        List<MovieOrder> orders = movieOrderMapper.selectList(new LambdaQueryWrapper<MovieOrder>()
+                .eq(MovieOrder::getUserId, userId)
+                .orderByDesc(MovieOrder::getCreateTime));
         // entity -> VO：不把数据库实体直接暴露给前端
         return orders.stream().map(this::toVO).collect(Collectors.toList());
     }
 
     @Override
     public OrderVO getOrder(Long userId, String orderNo) {
-        TrainOrder order = trainOrderMapper.selectOne(new LambdaQueryWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo, orderNo)
-                .eq(TrainOrder::getUserId, userId));
+        MovieOrder order = movieOrderMapper.selectOne(new LambdaQueryWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo, orderNo)
+                .eq(MovieOrder::getUserId, userId));
         if (order == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
@@ -83,46 +83,46 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void createOrder(OrderCreateMessage message) {
         //1.幂等：同一个订单号只落库一次（order_no上还有唯一索引发，双保险）
-        TrainOrder exist=trainOrderMapper.selectOne(new LambdaQueryWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo,message.getOrderNo()));
+        MovieOrder exist=movieOrderMapper.selectOne(new LambdaQueryWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo,message.getOrderNo()));
 
         if(exist!=null){
             log.info("订单已存在，忽略重复的下单消息 orderNo={}", message.getOrderNo());
             return;
         }
 
-        //2.车次信息落库时再查：消息里不用塞那么多字段
-        Train train=trainMapper.selectById(message.getTrainId());
-        if(train==null){
-            log.warn("下单消息里的车次不存在，丢弃这条消息trainId={}",message.getTrainId());
+        //2.场次信息落库时再查：消息里不用塞那么多字段
+        Screening screening=screeningMapper.selectById(message.getScreeningId());
+        if(screening==null){
+            log.warn("下单消息里的场次不存在，丢弃这条消息screeningId={}",message.getScreeningId());
             return;
         }
 
         //3.算总金额：票价（分）*张数
-        TrainSeat seat=trainSeatMapper.selectOne(new LambdaQueryWrapper<TrainSeat>()
-                .eq(TrainSeat::getTrainId, message.getTrainId())
-                .eq(TrainSeat::getTravelDate, message.getTravelDate())
-                .eq(TrainSeat::getSeatType, message.getSeatType()));
+        ScreeningSeat seat=screeningSeatMapper.selectOne(new LambdaQueryWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, message.getScreeningId())
+                .eq(ScreeningSeat::getShowDate, message.getShowDate())
+                .eq(ScreeningSeat::getTicketType, message.getTicketType()));
 
         long price = (seat == null || seat.getPrice() == null) ? 0L : seat.getPrice();
         long totalAmount = price * message.getTicketCount();
         // ④ 落库订单（状态：待支付）
         LocalDateTime now = LocalDateTime.now();
-        TrainOrder order = new TrainOrder();
+        MovieOrder order = new MovieOrder();
         order.setOrderNo(message.getOrderNo());
         order.setUserId(message.getUserId());
-        order.setTrainId(message.getTrainId());
-        order.setTravelDate(message.getTravelDate());
-        order.setStartStationId(train.getStartStationId());
-        order.setEndStationId(train.getEndStationId());
-        order.setSeatType(message.getSeatType());
+        order.setScreeningId(message.getScreeningId());
+        order.setShowDate(message.getShowDate());
+        order.setCinemaId(screening.getCinemaId());
+        order.setHallId(screening.getHallId());
+        order.setTicketType(message.getTicketType());
         order.setTicketCount(message.getTicketCount());
         order.setTotalAmount(totalAmount);
         order.setStatus(STATUS_WAIT_PAY);
         order.setPayExpireTime(now.plusMinutes(PAY_TIMEOUT_MINUTES));
         order.setCreateTime(now);
         order.setUpdateTime(now);
-        trainOrderMapper.insert(order);
+        movieOrderMapper.insert(order);
 
         // ④' 落订单明细：一张订单对应 ticketCount 个乘客（演示：乘客信息由下单请求透传，缺省用占位）
         int itemCount = message.getTicketCount() == null ? 0 : message.getTicketCount();
@@ -130,23 +130,23 @@ public class OrderServiceImpl implements OrderService {
                 ? message.getPassengerName() : "乘客";
         String idCardNo = message.getIdCardNo() == null ? "" : message.getIdCardNo();
         for (int i = 0; i < itemCount; i++) {
-            TrainOrderItem item = new TrainOrderItem();
+            MovieOrderItem item = new MovieOrderItem();
             item.setOrderId(order.getId());     // 自增主键已回填
             item.setPassengerName(passengerName);
             item.setIdCardNo(idCardNo);
             item.setStatus(0);                  // 0 待出票（出票在选做的"已出票"环节回填 seatNo）
-            trainOrderItemMapper.insert(item);
+            movieOrderItemMapper.insert(item);
         }
 
         // ⑤ DB 库存也要减！
         // 为什么：Redis 余票有 TTL（30 分钟），过期后会"从 DB 重建"。
         // 如果 DB 的 remain 一直不减，缓存一过期库存就"复活"，等于超卖。
         // 条件 remain >= 购买数量，保证不会把余票减成负数。
-        int stockRows = trainSeatMapper.update(null, new LambdaUpdateWrapper<TrainSeat>()
-                .eq(TrainSeat::getTrainId, message.getTrainId())
-                .eq(TrainSeat::getTravelDate, message.getTravelDate())
-                .eq(TrainSeat::getSeatType, message.getSeatType())
-                .ge(TrainSeat::getRemain, message.getTicketCount())
+        int stockRows = screeningSeatMapper.update(null, new LambdaUpdateWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, message.getScreeningId())
+                .eq(ScreeningSeat::getShowDate, message.getShowDate())
+                .eq(ScreeningSeat::getTicketType, message.getTicketType())
+                .ge(ScreeningSeat::getRemain, message.getTicketCount())
                 .setSql("remain = remain - " + message.getTicketCount()));
         if (stockRows == 0) {
             log.warn("DB 库存扣减未成功（可能已经扣完） orderNo={}", message.getOrderNo());
@@ -165,12 +165,12 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void paySuccess(String orderNo) {
         // SQL 里带上 status = 0 条件：影响行数 = 0 说明已经支付过或已取消，直接幂等返回
-        int rows = trainOrderMapper.update(null, new LambdaUpdateWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo, orderNo)
-                .eq(TrainOrder::getStatus, STATUS_WAIT_PAY)
-                .set(TrainOrder::getStatus, STATUS_PAID)
-                .set(TrainOrder::getPayTime, LocalDateTime.now())
-                .set(TrainOrder::getUpdateTime, LocalDateTime.now()));
+        int rows = movieOrderMapper.update(null, new LambdaUpdateWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo, orderNo)
+                .eq(MovieOrder::getStatus, STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus, STATUS_PAID)
+                .set(MovieOrder::getPayTime, LocalDateTime.now())
+                .set(MovieOrder::getUpdateTime, LocalDateTime.now()));
         if (rows == 0) {
             log.info("支付回调：订单不是待支付状态，幂等忽略 orderNo={}", orderNo);
             return;
@@ -181,25 +181,25 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void closeTimeoutOrder(String orderNo) {
-        int rows = trainOrderMapper.update(null, new LambdaUpdateWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo, orderNo)
-                .eq(TrainOrder::getStatus, STATUS_WAIT_PAY)
-                .set(TrainOrder::getStatus, STATUS_CANCELED)
-                .set(TrainOrder::getUpdateTime, LocalDateTime.now()));
+        int rows = movieOrderMapper.update(null, new LambdaUpdateWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo, orderNo)
+                .eq(MovieOrder::getStatus, STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus, STATUS_CANCELED)
+                .set(MovieOrder::getUpdateTime, LocalDateTime.now()));
 
         if (rows == 0) {
             log.info("支付超时消息：订单已支付或已取消，忽略 orderNo={}", orderNo);
             return;
         }
 
-        TrainOrder order=trainOrderMapper.selectOne(new LambdaQueryWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo,orderNo));
+        MovieOrder order=movieOrderMapper.selectOne(new LambdaQueryWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo,orderNo));
 
         ticketOrderProducer.sendStockRelease(StockReleaseMessage.builder()
                 .orderNo(orderNo)
-                .trainId(order.getTrainId())
-                .travelDate(order.getTravelDate())
-                .seatType(order.getSeatType())
+                .screeningId(order.getScreeningId())
+                .showDate(order.getShowDate())
+                .ticketType(order.getTicketType())
                 .ticketCount(order.getTicketCount())
                 .reason("TIMEOUT")
                 .build());
@@ -225,10 +225,10 @@ public class OrderServiceImpl implements OrderService {
         }
 
         //2.先改DB
-        int rows=trainSeatMapper.update(null, new LambdaUpdateWrapper<TrainSeat>()
-                .eq(TrainSeat::getTrainId, message.getTrainId())
-                .eq(TrainSeat::getTravelDate, message.getTravelDate())
-                .eq(TrainSeat::getSeatType, message.getSeatType())
+        int rows=screeningSeatMapper.update(null, new LambdaUpdateWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, message.getScreeningId())
+                .eq(ScreeningSeat::getShowDate, message.getShowDate())
+                .eq(ScreeningSeat::getTicketType, message.getTicketType())
                 .setSql("remain = remain + " + message.getTicketCount()));
         if(rows==0){
             log.warn("库存回补没找到对应库存行 orderNo={}", message.getOrderNo());
@@ -236,7 +236,7 @@ public class OrderServiceImpl implements OrderService {
 
         //3.最后回补Redis
         String key = RedisKeyConstant.ticketStockKey(
-                message.getTrainId(), message.getTravelDate().toString(), message.getSeatType());
+                message.getScreeningId(), message.getShowDate().toString(), message.getTicketType());
         stringRedisTemplate.opsForValue().increment(key, message.getTicketCount());
 
         log.info("库存已回补 order={} count={} DB影响行数={} reason={}",
@@ -249,10 +249,10 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void refund(Long userId, String orderNo) {
         //1.校验归属:只能退自己的订单
-        TrainOrder order=trainOrderMapper.selectOne(
-                new LambdaQueryWrapper<TrainOrder>()
-                        .eq(TrainOrder::getOrderNo,orderNo)
-                        .eq(TrainOrder::getUserId,userId));
+        MovieOrder order=movieOrderMapper.selectOne(
+                new LambdaQueryWrapper<MovieOrder>()
+                        .eq(MovieOrder::getOrderNo,orderNo)
+                        .eq(MovieOrder::getUserId,userId));
 
          if(order==null){
              throw new BusinessException(ResultCode.NOT_FOUND);
@@ -260,13 +260,13 @@ public class OrderServiceImpl implements OrderService {
 
         //2.只有“已支付/已出票”能退票：SQL带status条件,影响行数为0说明状态已经变了
         //  用 in(...) 一次表达“状态是 1 或 3”，避免 .eq().or().eq() 因 AND/OR 优先级越权改单
-         int rows=trainOrderMapper.update(null,
-                 new LambdaUpdateWrapper<TrainOrder>()
-                         .eq(TrainOrder::getOrderNo,orderNo)
-                         .eq(TrainOrder::getUserId,userId)//越权双保险
-                         .in(TrainOrder::getStatus,STATUS_PAID,STATUS_ISSUED)//已支付 或 已出票
-                         .set(TrainOrder::getStatus,STATUS_REFUNDED)// 1/3 → 4 已退票
-                         .set(TrainOrder::getUpdateTime,LocalDateTime.now())
+         int rows=movieOrderMapper.update(null,
+                 new LambdaUpdateWrapper<MovieOrder>()
+                         .eq(MovieOrder::getOrderNo,orderNo)
+                         .eq(MovieOrder::getUserId,userId)//越权双保险
+                         .in(MovieOrder::getStatus,STATUS_PAID,STATUS_ISSUED)//已支付 或 已出票
+                         .set(MovieOrder::getStatus,STATUS_REFUNDED)// 1/3 → 4 已退票
+                         .set(MovieOrder::getUpdateTime,LocalDateTime.now())
 
                  );
 
@@ -280,9 +280,9 @@ public class OrderServiceImpl implements OrderService {
 
         ticketOrderProducer.sendStockRelease(StockReleaseMessage.builder()
                 .orderNo(orderNo)
-                .trainId(order.getTrainId())
-                .travelDate(order.getTravelDate())
-                .seatType(order.getSeatType())
+                .screeningId(order.getScreeningId())
+                .showDate(order.getShowDate())
+                .ticketType(order.getTicketType())
                 .ticketCount(order.getTicketCount())
                 .reason("REFUND")
                 .build()
@@ -299,20 +299,20 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long userId, String orderNo) {
         //1.校验归属：只能取消自己的订单
-        TrainOrder order=trainOrderMapper.selectOne(new LambdaQueryWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo,orderNo)
-                .eq(TrainOrder::getUserId,userId));
+        MovieOrder order=movieOrderMapper.selectOne(new LambdaQueryWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo,orderNo)
+                .eq(MovieOrder::getUserId,userId));
 
         if(order==null){
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
 
         //2.只有“待支付”能取消：SQL带status条件,影响行数为0说明状态已经变了
-        int rows=trainOrderMapper.update(null,new LambdaUpdateWrapper<TrainOrder>()
-                .eq(TrainOrder::getOrderNo,orderNo)
-                .eq(TrainOrder::getStatus,STATUS_WAIT_PAY)
-                .set(TrainOrder::getStatus,STATUS_CANCELED)
-                .set(TrainOrder::getUpdateTime,LocalDateTime.now())
+        int rows=movieOrderMapper.update(null,new LambdaUpdateWrapper<MovieOrder>()
+                .eq(MovieOrder::getOrderNo,orderNo)
+                .eq(MovieOrder::getStatus,STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus,STATUS_CANCELED)
+                .set(MovieOrder::getUpdateTime,LocalDateTime.now())
         );
         if(rows==0){
             if(order.getStatus()==STATUS_PAID){
@@ -324,9 +324,9 @@ public class OrderServiceImpl implements OrderService {
         //3.发消息释放库存（取消=把票还回去）
         ticketOrderProducer.sendStockRelease(StockReleaseMessage.builder()
                 .orderNo(orderNo)
-                .trainId(order.getTrainId())
-                .travelDate(order.getTravelDate())
-                .seatType(order.getSeatType())
+                .screeningId(order.getScreeningId())
+                .showDate(order.getShowDate())
+                .ticketType(order.getTicketType())
                 .ticketCount(order.getTicketCount())
                 .reason("CANCEL")
                 .build()
@@ -335,15 +335,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /** 实体转 VO */
-    private OrderVO toVO(TrainOrder order) {
+    private OrderVO toVO(MovieOrder order) {
         return OrderVO.builder()
                 .id(order.getId())
                 .orderNo(order.getOrderNo())
-                .trainId(order.getTrainId())
-                .travelDate(order.getTravelDate())
-                .startStationId(order.getStartStationId())
-                .endStationId(order.getEndStationId())
-                .seatType(order.getSeatType())
+                .screeningId(order.getScreeningId())
+                .showDate(order.getShowDate())
+                .cinemaId(order.getCinemaId())
+                .hallId(order.getHallId())
+                .ticketType(order.getTicketType())
                 .ticketCount(order.getTicketCount())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus())

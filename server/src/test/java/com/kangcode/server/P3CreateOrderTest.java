@@ -1,14 +1,15 @@
 package com.kangcode.server;
 
 import com.kangcode.pojo.dto.OrderCreateMessage;
-import com.kangcode.pojo.entity.Train;
-import com.kangcode.pojo.entity.TrainOrder;
-import com.kangcode.pojo.entity.TrainOrderItem;
-import com.kangcode.pojo.entity.TrainSeat;
-import com.kangcode.server.mapper.TrainMapper;
-import com.kangcode.server.mapper.TrainOrderItemMapper;
-import com.kangcode.server.mapper.TrainOrderMapper;
-import com.kangcode.server.mapper.TrainSeatMapper;
+import com.kangcode.pojo.entity.Screening;
+import com.kangcode.pojo.entity.MovieOrder;
+import com.kangcode.pojo.entity.MovieOrderItem;
+import com.kangcode.pojo.entity.ScreeningSeat;
+import com.kangcode.server.mapper.ScreeningMapper;
+import com.kangcode.server.mapper.MovieOrderItemMapper;
+import com.kangcode.server.mapper.MovieOrderMapper;
+import com.kangcode.server.mapper.ScreeningSeatMapper;
+import com.kangcode.server.mapper.StockReleaseLogMapper;
 import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,34 +37,34 @@ import static org.mockito.Mockito.when;
  */
 class P3CreateOrderTest {
 
-    private TrainOrderMapper orderMapper;
-    private TrainMapper trainMapper;
-    private TrainSeatMapper seatMapper;
-    private TrainOrderItemMapper itemMapper;
+    private MovieOrderMapper orderMapper;
+    private ScreeningMapper screeningMapper;
+    private ScreeningSeatMapper seatMapper;
+    private MovieOrderItemMapper itemMapper;
     private TicketOrderProducer producer;
     private OrderServiceImpl service;
 
     /**
      * ⚠️ 必须初始化 MyBatis-Plus 元数据。
-     * createOrder 里用了 {@code new LambdaQueryWrapper<TrainOrder>().eq(TrainOrder::getOrderNo, ...)}，
+     * createOrder 里用了 {@code new LambdaQueryWrapper<MovieOrder>().eq(MovieOrder::getOrderNo, ...)}，
      * 方法引用要解析成列名，而纯单测没有 Spring，元数据是空的 →
      * {@code MybatisPlusException: can not find lambda cache for this entity}。
      * （以前单独跑这个类会挂，只是因为全量跑时有别的 Spring 测试先初始化了元数据才"看起来能过"。）
      */
     @BeforeAll
     static void initMp() {
-        MpLambdaSupport.init(TrainOrder.class, TrainSeat.class, Train.class);
+        MpLambdaSupport.init(MovieOrder.class, ScreeningSeat.class, Screening.class);
     }
 
     @BeforeEach
     void setUp() {
-        orderMapper = mock(TrainOrderMapper.class);
-        trainMapper = mock(TrainMapper.class);
-        seatMapper = mock(TrainSeatMapper.class);
-        itemMapper = mock(TrainOrderItemMapper.class);
+        orderMapper = mock(MovieOrderMapper.class);
+        screeningMapper = mock(ScreeningMapper.class);
+        seatMapper = mock(ScreeningSeatMapper.class);
+        itemMapper = mock(MovieOrderItemMapper.class);
         producer = mock(TicketOrderProducer.class);
-        service = new OrderServiceImpl(orderMapper, trainMapper, seatMapper,
-                itemMapper, mock(StringRedisTemplate.class), producer);
+        service = new OrderServiceImpl(orderMapper, screeningMapper, seatMapper,
+                itemMapper, mock(StringRedisTemplate.class), producer, mock(StockReleaseLogMapper.class));
     }
 
     private OrderCreateMessage msg() {
@@ -71,9 +72,9 @@ class P3CreateOrderTest {
                 .messageId("KR20261005000001")
                 .orderNo("KR20261005000001")
                 .userId(7L)
-                .trainId(2L)
-                .travelDate(LocalDate.of(2026, 10, 5))
-                .seatType("二等座")
+                .screeningId(2L)
+                .showDate(LocalDate.of(2026, 10, 5))
+                .ticketType("二等座")
                 .ticketCount(1)
                 .build();
     }
@@ -81,23 +82,23 @@ class P3CreateOrderTest {
     @Test
     @DisplayName("P3-7 幂等：订单已存在 -> 直接返回，不重复落库")
     void idempotent() {
-        when(orderMapper.selectOne(any())).thenReturn(new TrainOrder());
+        when(orderMapper.selectOne(any())).thenReturn(new MovieOrder());
 
         service.createOrder(msg());
 
-        verify(orderMapper, never()).insert(any(TrainOrder.class));
+        verify(orderMapper, never()).insert(any(MovieOrder.class));
         verify(producer, never()).sendOrderTimeout(any());
     }
 
     @Test
-    @DisplayName("P3-8 车次不存在 -> 丢弃这条消息")
-    void trainMissing() {
+    @DisplayName("P3-8 场次不存在 -> 丢弃这条消息")
+    void screeningMissing() {
         when(orderMapper.selectOne(any())).thenReturn(null);
-        when(trainMapper.selectById(anyLong())).thenReturn(null);
+        when(screeningMapper.selectById(anyLong())).thenReturn(null);
 
         service.createOrder(msg());
 
-        verify(orderMapper, never()).insert(any(TrainOrder.class));
+        verify(orderMapper, never()).insert(any(MovieOrder.class));
     }
 
     @Test
@@ -105,20 +106,20 @@ class P3CreateOrderTest {
     void createOk() {
         when(orderMapper.selectOne(any())).thenReturn(null);
 
-        Train train = new Train();
-        train.setStartStationId(1L);
-        train.setEndStationId(4L);
-        when(trainMapper.selectById(anyLong())).thenReturn(train);
+        Screening screening = new Screening();
+        screening.setCinemaId(1L);
+        screening.setHallId(4L);
+        when(screeningMapper.selectById(anyLong())).thenReturn(screening);
 
-        TrainSeat seat = new TrainSeat();
+        ScreeningSeat seat = new ScreeningSeat();
         seat.setPrice(55300L);   // 553.00 元（单位：分）
         when(seatMapper.selectOne(any())).thenReturn(seat);
 
         service.createOrder(msg());
 
-        ArgumentCaptor<TrainOrder> cap = ArgumentCaptor.forClass(TrainOrder.class);
+        ArgumentCaptor<MovieOrder> cap = ArgumentCaptor.forClass(MovieOrder.class);
         verify(orderMapper).insert(cap.capture());
-        TrainOrder saved = cap.getValue();
+        MovieOrder saved = cap.getValue();
 
         assertEquals("KR20261005000001", saved.getOrderNo());
         assertEquals(0, saved.getStatus().intValue(), "新订单状态应为 0（待支付）");
@@ -133,9 +134,9 @@ class P3CreateOrderTest {
     @DisplayName("P3-10 多张票：金额 = 单价 × 数量")
     void amountMultiply() {
         when(orderMapper.selectOne(any())).thenReturn(null);
-        Train train = new Train();
-        when(trainMapper.selectById(anyLong())).thenReturn(train);
-        TrainSeat seat = new TrainSeat();
+        Screening screening = new Screening();
+        when(screeningMapper.selectById(anyLong())).thenReturn(screening);
+        ScreeningSeat seat = new ScreeningSeat();
         seat.setPrice(10000L);
         when(seatMapper.selectOne(any())).thenReturn(seat);
 
@@ -143,7 +144,7 @@ class P3CreateOrderTest {
         m.setTicketCount(3);
         service.createOrder(m);
 
-        ArgumentCaptor<TrainOrder> cap = ArgumentCaptor.forClass(TrainOrder.class);
+        ArgumentCaptor<MovieOrder> cap = ArgumentCaptor.forClass(MovieOrder.class);
         verify(orderMapper).insert(cap.capture());
         assertEquals(30000L, cap.getValue().getTotalAmount().longValue());
     }
@@ -152,25 +153,25 @@ class P3CreateOrderTest {
     @DisplayName("P3-11 ⚠️ 票价查不到时：当前会按 0 元落库（隐患，期望是失败/告警）")
     void priceMissingCurrentBehavior() {
         when(orderMapper.selectOne(any())).thenReturn(null);
-        Train train = new Train();
-        when(trainMapper.selectById(anyLong())).thenReturn(train);
+        Screening screening = new Screening();
+        when(screeningMapper.selectById(anyLong())).thenReturn(screening);
         when(seatMapper.selectOne(any())).thenReturn(null);   // 查不到票价
 
         service.createOrder(msg());
 
-        ArgumentCaptor<TrainOrder> cap = ArgumentCaptor.forClass(TrainOrder.class);
+        ArgumentCaptor<MovieOrder> cap = ArgumentCaptor.forClass(MovieOrder.class);
         verify(orderMapper).insert(cap.capture());
         assertEquals(0L, cap.getValue().getTotalAmount().longValue(),
                 "现在会以 0 元落库 —— 这里本应拒绝下单并告警");
     }
 
     @Test
-    @DisplayName("P3-12 落订单明细：ticketCount=3 → 插入 3 条 train_order_item（带乘客信息）")
+    @DisplayName("P3-12 落订单明细：ticketCount=3 → 插入 3 条 movie_order_item（带乘客信息）")
     void createOrderItems() {
         when(orderMapper.selectOne(any())).thenReturn(null);
-        Train train = new Train();
-        when(trainMapper.selectById(anyLong())).thenReturn(train);
-        TrainSeat seat = new TrainSeat();
+        Screening screening = new Screening();
+        when(screeningMapper.selectById(anyLong())).thenReturn(screening);
+        ScreeningSeat seat = new ScreeningSeat();
         seat.setPrice(10000L);
         when(seatMapper.selectOne(any())).thenReturn(seat);
 
@@ -180,9 +181,9 @@ class P3CreateOrderTest {
         m.setIdCardNo("110101199001011234");
         service.createOrder(m);
 
-        ArgumentCaptor<TrainOrderItem> cap = ArgumentCaptor.forClass(TrainOrderItem.class);
+        ArgumentCaptor<MovieOrderItem> cap = ArgumentCaptor.forClass(MovieOrderItem.class);
         verify(itemMapper, times(3)).insert(cap.capture());
-        TrainOrderItem item = cap.getValue();
+        MovieOrderItem item = cap.getValue();
         assertEquals("张三", item.getPassengerName());
         assertEquals("110101199001011234", item.getIdCardNo());
         assertEquals(0, item.getStatus().intValue(), "新明细应为 0（待出票）");

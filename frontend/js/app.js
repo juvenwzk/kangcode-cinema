@@ -3,16 +3,16 @@
      /                        首页（查询入口）
      /api/auth/login          登录 / 注册页        → POST /api/auth/login、/api/auth/register
      /api/user/me             个人中心              → GET  /api/user/me、POST /api/user/logout
-     /api/station/list        车站列表              → GET  /api/station/list
-     /api/train/page          车次列表              → GET  /api/train/page
-     /api/train/{id}          车次详情              → GET  /api/train/{id}
+     /api/cinema/list        影院列表              → GET  /api/cinema/list
+     /api/screening/page          场次列表              → GET  /api/screening/page
+     /api/screening/{id}          场次详情              → GET  /api/screening/{id}
      /api/ticket/remain       余票查询              → GET  /api/ticket/remain
      /api/ticket/buy          购票下单              → POST /api/ticket/buy
      /api/order/my            我的订单              → GET  /api/order/my
      /api/admin/ping          管理控制台            → GET  /api/admin/ping
      /api/admin/stock/publish 管理台·放票页          → POST /api/admin/stock/publish
-     /api/admin/train/{id}    管理台·车次维护页       → PUT  /api/admin/train/{id}
-     /api/admin/station/{id}  管理台·车站维护页       → PUT  /api/admin/station/{id}
+     /api/admin/train/{id}    管理台·场次维护页       → PUT  /api/admin/train/{id}
+     /api/admin/station/{id}  管理台·影院维护页       → PUT  /api/admin/station/{id}
      /console                 接口联调控制台（调试页，非后端接口）
    ========================================================================== */
 (function () {
@@ -22,7 +22,7 @@
     { re: /^\/$/, page: 'home' },
     { re: /^\/api\/auth\/login\/?$/, page: 'login' },
     { re: /^\/api\/user\/me\/?$/, page: 'profile' },
-    { re: /^\/api\/station\/list\/?$/, page: 'stations' },
+    { re: /^\/api\/station\/list\/?$/, page: 'halls' },
     { re: /^\/api\/train\/page\/?$/, page: 'trains' },
     { re: /^\/api\/train\/(\d+)\/?$/, page: 'trainDetail' },
     { re: /^\/api\/ticket\/remain\/?$/, page: 'remain' },
@@ -113,7 +113,7 @@
       pill.className = 'source-pill';
       return;
     }
-    API.raw('GET', '/api/station/list').then(function (r) {
+    API.raw('GET', '/api/cinema/list').then(function (r) {
       pill.classList.remove('real', 'mock');
       if (r.status === 200) { text.textContent = '后端正常 · 已登录'; pill.classList.add('real'); }
       else if (r.status === 401) { text.textContent = '后端正常 · 未登录'; pill.classList.add('mock'); }

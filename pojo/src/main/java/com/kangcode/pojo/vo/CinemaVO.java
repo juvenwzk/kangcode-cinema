@@ -6,20 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 车站信息（返回给前端）
+ * 影院信息（返回给前端）
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StationVO {
+public class CinemaVO {
 
     private Long id;
 
-    /** 车站电报码/站码 */
-    private String stationCode;
+    /** 影院电报码/站码 */
+    private String cinemaCode;
 
-    private String stationName;
+    private String cinemaName;
 
     private String city;
 }

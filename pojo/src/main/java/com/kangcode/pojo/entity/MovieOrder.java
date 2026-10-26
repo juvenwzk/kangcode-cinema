@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
  * 订单
  */
 @Data
-@TableName("train_order")
-public class TrainOrder {
+@TableName("movie_order")
+public class MovieOrder {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -22,15 +22,15 @@ public class TrainOrder {
 
     private Long userId;
 
-    private Long trainId;
+    private Long screeningId;
 
-    private LocalDate travelDate;
+    private LocalDate showDate;
 
-    private Long startStationId;
+    private Long cinemaId;
 
-    private Long endStationId;
+    private Long hallId;
 
-    private String seatType;
+    private String ticketType;
 
     private Integer ticketCount;
 
