@@ -2,6 +2,7 @@ package com.kangcode.server.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kangcode.common.constant.RedisKeyConstant;
+import com.kangcode.common.constant.TicketCacheConstant;
 import com.kangcode.pojo.entity.ScreeningSeat;
 import com.kangcode.server.mapper.ScreeningSeatMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +27,8 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class StockReconcileTask {
 
-    /** 与 TicketServiceImpl 里的空值标记保持一致 */
-    private static final String EMPTY_VALUE = "EMPTY";
-
     /** 对账范围：今天 ~ 今天 + 14 天 */
     private static final int DAYS_AHEAD = 14;
-    /** 对账写回的 TTL */
-    private static final long STOCK_CACHE_MINUTES = 30;
 
     private final ScreeningSeatMapper screeningSeatMapper;
     private final StringRedisTemplate stringRedisTemplate;
@@ -57,7 +53,7 @@ public class StockReconcileTask {
             int dbRemain = seat.getRemain();
 
             // ① 还没预热过 → 补上（属于正常情况，不打 WARN）
-            if (cached == null || EMPTY_VALUE.equals(cached)) {
+            if (cached == null || TicketCacheConstant.EMPTY_VALUE.equals(cached)) {
                 write(key, dbRemain);
                 preheated++;
                 continue;
@@ -91,6 +87,6 @@ public class StockReconcileTask {
 
     private void write(String key, int remain) {
         stringRedisTemplate.opsForValue()
-                .set(key, String.valueOf(remain), STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
+                .set(key, String.valueOf(remain), TicketCacheConstant.STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
     }
 }

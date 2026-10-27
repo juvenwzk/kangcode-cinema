@@ -2,6 +2,7 @@ package com.kangcode.server.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kangcode.common.constant.RedisKeyConstant;
+import com.kangcode.common.constant.TicketCacheConstant;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.StockPublishRequest;
@@ -24,8 +25,6 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class StockServiceImpl implements StockService {
 
-
-    private final long STOCK_CACHE_MINUTES=30;
 
     private final ScreeningSeatMapper screeningSeatMapper;
     private final StringRedisTemplate stringRedisTemplate;
@@ -78,7 +77,7 @@ public class StockServiceImpl implements StockService {
                 request.getScreeningId(),showDate.toString(),request.getTicketType()
         );
         stringRedisTemplate.opsForValue()
-                .set(key, String.valueOf(remain), STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
+                .set(key, String.valueOf(remain), TicketCacheConstant.STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
         return remain;
     }
 }

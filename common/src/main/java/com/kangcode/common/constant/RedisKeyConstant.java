@@ -19,6 +19,8 @@ public final class RedisKeyConstant {
 
     /** 订单号每日序列：order:seq:{yyyyMMdd} */
     public static final String ORDER_SEQ_PREFIX = "order:seq:";
+    //布隆过滤器：order:bloom:screening(整个过滤器就是这一个key的bit串)
+    public static final String SCREENING_BLOOM_KEY="order:bloom:screening";
 
     /** 幂等键：order:dup:{userId}:{screeningId}:{showDate} */
     public static final String ORDER_DUP_PREFIX = "order:dup:";
@@ -42,5 +44,6 @@ public final class RedisKeyConstant {
 
     public static String orderSeqKey(String day) {
         return ORDER_SEQ_PREFIX + day;
+
     }
 }

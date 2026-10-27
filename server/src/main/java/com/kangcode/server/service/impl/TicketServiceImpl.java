@@ -2,6 +2,7 @@ package com.kangcode.server.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kangcode.common.constant.RedisKeyConstant;
+import com.kangcode.common.constant.TicketCacheConstant;
 
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
@@ -37,20 +38,10 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class  TicketServiceImpl implements TicketService {
 
-    /** 空值标记：缓存里存这个字符串表示“DB 里也没有”，用来防穿透 */
-    private static final String EMPTY_VALUE = "EMPTY";
-    /** 正常余票缓存 TTL：10 分钟 */
-    private static final long STOCK_TTL_SECONDS = 10 * 60;
-    /** TTL 随机抖动上限：60 秒（防雪崩） */
-    private static final long TTL_JITTER_SECONDS = 60;
-    /** 空值缓存 TTL：60 秒 */
-    private static final long EMPTY_TTL_SECONDS = 60;
-    /** 下单幂等键 TTL：30 秒（防手抖重复提交） */
-    private static final long DUP_TTL_SECONDS = 30;
-    /** 抢锁最多等待 3 秒 */
-    private static final long LOCK_WAIT_SECONDS = 3;
-    /** 锁租约 10 秒：即使服务宕机，锁也会自动释放，不会死锁 */
-    private static final long LOCK_LEASE_SECONDS = 10;
+    /*
+     * 缓存 TTL、空值标记、锁参数等常量已收敛到
+     * common 模块的 TicketCacheConstant（原来散在本类与 StockReconcileTask 两处）。
+     */
 
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -69,7 +60,7 @@ public class  TicketServiceImpl implements TicketService {
         // 1. 缓存命中直接返回
         String cached = stringRedisTemplate.opsForValue().get(key);
         if (cached != null) {
-            return EMPTY_VALUE.equals(cached) ? 0 : Integer.valueOf(cached);
+            return TicketCacheConstant.EMPTY_VALUE.equals(cached) ? 0 : Integer.valueOf(cached);
         }
 
         // 2. 抢互斥锁
@@ -96,7 +87,7 @@ public class  TicketServiceImpl implements TicketService {
             }
             cached = stringRedisTemplate.opsForValue().get(key);
             if (cached != null) {
-                return EMPTY_VALUE.equals(cached) ? 0 : Integer.valueOf(cached);
+                return TicketCacheConstant.EMPTY_VALUE.equals(cached) ? 0 : Integer.valueOf(cached);
             }
         }
 
@@ -114,11 +105,13 @@ public class  TicketServiceImpl implements TicketService {
 
         if (seat == null) {
             stringRedisTemplate.opsForValue()
-                    .set(key, EMPTY_VALUE, EMPTY_TTL_SECONDS, TimeUnit.SECONDS);
+                    .set(key, TicketCacheConstant.EMPTY_VALUE,
+                            TicketCacheConstant.EMPTY_TTL_SECONDS, TimeUnit.SECONDS);
             return 0;
         }
 
-        long ttl = STOCK_TTL_SECONDS + ThreadLocalRandom.current().nextInt((int) TTL_JITTER_SECONDS);
+        long ttl = TicketCacheConstant.STOCK_TTL_SECONDS
+                + ThreadLocalRandom.current().nextInt((int) TicketCacheConstant.TTL_JITTER_SECONDS);
         stringRedisTemplate.opsForValue()
                 .set(key, String.valueOf(seat.getRemain()), ttl, TimeUnit.SECONDS);
         return seat.getRemain();
@@ -136,7 +129,7 @@ public class  TicketServiceImpl implements TicketService {
 
         String dupKey=RedisKeyConstant.orderDupKey(userId,screeningId,date);
         Boolean first=stringRedisTemplate.opsForValue()
-                .setIfAbsent(dupKey,"1",DUP_TTL_SECONDS,TimeUnit.SECONDS);
+                .setIfAbsent(dupKey,"1",TicketCacheConstant.DUP_TTL_SECONDS,TimeUnit.SECONDS);
 
         if(!Boolean.TRUE.equals(first)) {
         throw new BusinessException(ResultCode.ORDER_REPEATED);
@@ -145,7 +138,8 @@ public class  TicketServiceImpl implements TicketService {
         RLock lock=redissonClient.getLock(RedisKeyConstant.ticketLockKey(screeningId,date,ticketType));        boolean locked=false;
         boolean deducted=false;
         try {
-            locked=lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
+            locked=lock.tryLock(TicketCacheConstant.LOCK_WAIT_SECONDS,
+                    TicketCacheConstant.LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
             if(!locked){
                 throw  new BusinessException(ResultCode.BUSINESS_ERROR.getCode(),"当前购票人数较多，请稍后重试");
             }

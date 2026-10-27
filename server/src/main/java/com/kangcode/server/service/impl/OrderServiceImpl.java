@@ -2,6 +2,7 @@ package com.kangcode.server.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.kangcode.common.constant.OrderStatusConstant;
 import com.kangcode.common.constant.RedisKeyConstant;
 import com.kangcode.common.core.ResultCode;
 import com.kangcode.common.exception.BusinessException;
@@ -33,22 +34,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-
-
-    /** 订单状态：0-待支付 */
-    private static final int STATUS_WAIT_PAY = 0;      // ← P3 已经加过了，确认一下在不在
-    /** 订单状态：1-已支付（P4 新增） */
-    private static final int STATUS_PAID = 1;
-    /** 订单状态：2-已取消 / 已关闭（P4 新增） */
-    private static final int STATUS_CANCELED = 2;
-    /** 订单状态：3-已出票（P4 新增） */
-    private static final int STATUS_ISSUED = 3;
-    /** 订单状态：4-已退票（P4 新增） */
-    private static final int STATUS_REFUNDED = 4;
-
-
-    /** 支付超时时间（分钟） */
-    private static final int PAY_TIMEOUT_MINUTES = 30;  // ← P3 已经加过了
+    /*
+     * 订单状态与支付超时常量已收敛到 common 模块的 OrderStatusConstant
+     * （0 待支付 / 1 已支付 / 2 已取消 / 3 已出票 / 4 已退票，与 sql/init.sql 注释保持一致）。
+     */
 
     private final MovieOrderMapper movieOrderMapper;
     private final ScreeningMapper screeningMapper;
@@ -118,8 +107,8 @@ public class OrderServiceImpl implements OrderService {
         order.setTicketType(message.getTicketType());
         order.setTicketCount(message.getTicketCount());
         order.setTotalAmount(totalAmount);
-        order.setStatus(STATUS_WAIT_PAY);
-        order.setPayExpireTime(now.plusMinutes(PAY_TIMEOUT_MINUTES));
+        order.setStatus(OrderStatusConstant.STATUS_WAIT_PAY);
+        order.setPayExpireTime(now.plusMinutes(OrderStatusConstant.PAY_TIMEOUT_MINUTES));
         order.setCreateTime(now);
         order.setUpdateTime(now);
         movieOrderMapper.insert(order);
@@ -167,8 +156,8 @@ public class OrderServiceImpl implements OrderService {
         // SQL 里带上 status = 0 条件：影响行数 = 0 说明已经支付过或已取消，直接幂等返回
         int rows = movieOrderMapper.update(null, new LambdaUpdateWrapper<MovieOrder>()
                 .eq(MovieOrder::getOrderNo, orderNo)
-                .eq(MovieOrder::getStatus, STATUS_WAIT_PAY)
-                .set(MovieOrder::getStatus, STATUS_PAID)
+                .eq(MovieOrder::getStatus, OrderStatusConstant.STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus, OrderStatusConstant.STATUS_PAID)
                 .set(MovieOrder::getPayTime, LocalDateTime.now())
                 .set(MovieOrder::getUpdateTime, LocalDateTime.now()));
         if (rows == 0) {
@@ -183,8 +172,8 @@ public class OrderServiceImpl implements OrderService {
     public void closeTimeoutOrder(String orderNo) {
         int rows = movieOrderMapper.update(null, new LambdaUpdateWrapper<MovieOrder>()
                 .eq(MovieOrder::getOrderNo, orderNo)
-                .eq(MovieOrder::getStatus, STATUS_WAIT_PAY)
-                .set(MovieOrder::getStatus, STATUS_CANCELED)
+                .eq(MovieOrder::getStatus, OrderStatusConstant.STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus, OrderStatusConstant.STATUS_CANCELED)
                 .set(MovieOrder::getUpdateTime, LocalDateTime.now()));
 
         if (rows == 0) {
@@ -264,15 +253,15 @@ public class OrderServiceImpl implements OrderService {
                  new LambdaUpdateWrapper<MovieOrder>()
                          .eq(MovieOrder::getOrderNo,orderNo)
                          .eq(MovieOrder::getUserId,userId)//越权双保险
-                         .in(MovieOrder::getStatus,STATUS_PAID,STATUS_ISSUED)//已支付 或 已出票
-                         .set(MovieOrder::getStatus,STATUS_REFUNDED)// 1/3 → 4 已退票
+                         .in(MovieOrder::getStatus,OrderStatusConstant.STATUS_PAID,OrderStatusConstant.STATUS_ISSUED)//已支付 或 已出票
+                         .set(MovieOrder::getStatus,OrderStatusConstant.STATUS_REFUNDED)// 1/3 → 4 已退票
                          .set(MovieOrder::getUpdateTime,LocalDateTime.now())
 
                  );
 
         if (rows == 0) {
             // 待支付 → 未支付不能退；其余 → 已取消/已退票
-            if (order.getStatus() == STATUS_WAIT_PAY) {
+            if (order.getStatus() == OrderStatusConstant.STATUS_WAIT_PAY) {
                 throw new BusinessException(ResultCode.BUSINESS_ERROR.getCode(), "订单未支付，不能退票");
             }
             throw new BusinessException(ResultCode.BUSINESS_ERROR.getCode(), "该订单不能退票");
@@ -310,12 +299,12 @@ public class OrderServiceImpl implements OrderService {
         //2.只有“待支付”能取消：SQL带status条件,影响行数为0说明状态已经变了
         int rows=movieOrderMapper.update(null,new LambdaUpdateWrapper<MovieOrder>()
                 .eq(MovieOrder::getOrderNo,orderNo)
-                .eq(MovieOrder::getStatus,STATUS_WAIT_PAY)
-                .set(MovieOrder::getStatus,STATUS_CANCELED)
+                .eq(MovieOrder::getStatus,OrderStatusConstant.STATUS_WAIT_PAY)
+                .set(MovieOrder::getStatus,OrderStatusConstant.STATUS_CANCELED)
                 .set(MovieOrder::getUpdateTime,LocalDateTime.now())
         );
         if(rows==0){
-            if(order.getStatus()==STATUS_PAID){
+            if(order.getStatus()==OrderStatusConstant.STATUS_PAID){
                 throw new BusinessException(ResultCode.ORDER_PAID);
             }
             throw new BusinessException(ResultCode.ORDER_CANCELED);
