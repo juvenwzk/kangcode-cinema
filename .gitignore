@@ -3,6 +3,8 @@ target/
 *.class
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
+.tmp-build/
+.tmp-oss/
 
 # ===== 前端 =====
 node_modules/
@@ -38,3 +40,6 @@ desktop.ini
 # ===== 本地环境覆盖（切勿提交真实凭据）=====
 application-local.yml
 *-local.yml
+
+# ===== 工具/编辑器项目数据 =====
+.workbuddy/
