@@ -147,6 +147,12 @@ onMounted(load)
     <!-- 影院列表 -->
     <div v-loading="loading" class="card cinema-list">
       <div v-for="c in filtered" :key="c.id" class="cinema-row">
+        <!-- 影院 Logo：没上传时用品牌首字兜底，避免列表出现一排破图 -->
+        <div class="cinema-logo">
+          <img v-if="c.logoUrl" :src="c.logoUrl" :alt="c.cinemaName" loading="lazy" />
+          <span v-else>{{ c.brand.slice(0, 1) }}</span>
+        </div>
+
         <div class="cinema-main">
           <div class="cinema-name">{{ c.cinemaName }}</div>
           <div class="cinema-meta">
@@ -209,6 +215,28 @@ onMounted(load)
 .cinema-main {
   flex: 1;
   min-width: 0;
+}
+
+.cinema-logo {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2, #f5f5f5);
+  color: var(--ink-3, #999);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.cinema-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
 }
 
 .cinema-name {

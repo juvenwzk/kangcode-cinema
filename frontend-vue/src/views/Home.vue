@@ -8,7 +8,7 @@ const loading = ref(true)
 const cinemas = ref([])
 const screenings = ref([])
 
-/** 后端没有海报图，用影片名生成稳定的渐变色占位 */
+/** 无海报的影片用影片名生成稳定的渐变色占位 */
 const GRADIENTS = [
   'linear-gradient(135deg,#ef4238,#f79b72)',
   'linear-gradient(135deg,#3b4a6b,#7f9cc0)',
@@ -24,15 +24,16 @@ function gradientOf(name) {
   return GRADIENTS[h % GRADIENTS.length]
 }
 
-/** 按影片聚合场次 */
+/** 按影片聚合场次，海报取该影片第一张非空 posterUrl */
 const movies = computed(() => {
   const map = new Map()
   for (const s of screenings.value) {
     const name = s.movieName || '未命名影片'
     if (!map.has(name)) {
-      map.set(name, { name, count: 0, cinemas: new Set(), earliest: '99:99' })
+      map.set(name, { name, posterUrl: s.posterUrl || '', count: 0, cinemas: new Set(), earliest: '99:99' })
     }
     const m = map.get(name)
+    if (!m.posterUrl && s.posterUrl) m.posterUrl = s.posterUrl
     m.count += 1
     m.cinemas.add(s.cinemaId)
     if (s.startTime && s.startTime < m.earliest) m.earliest = s.startTime
@@ -80,8 +81,11 @@ onMounted(load)
 
       <div v-loading="loading" class="movie-grid">
         <div v-for="m in movies" :key="m.name" class="movie-card">
-          <div class="poster" :style="{ background: gradientOf(m.name) }">
-            <span class="poster-name">{{ m.name }}</span>
+          <div class="poster" :style="m.posterUrl ? {} : { background: gradientOf(m.name) }">
+            <img v-if="m.posterUrl" :src="m.posterUrl" :alt="m.name" class="poster-img" loading="lazy" />
+            <template v-else>
+              <span class="poster-name">{{ m.name }}</span>
+            </template>
             <span class="poster-badge">{{ m.count }} 场</span>
           </div>
           <div class="movie-info">
@@ -121,8 +125,8 @@ onMounted(load)
       <div class="card side-card tip">
         <div class="side-title">说明</div>
         <p class="muted">
-          数据来自后端 <code>/api/cinema/list</code> 与 <code>/api/screening/page</code>。
-          后端暂无海报、评分、票房字段，这里用场次数据聚合。
+          数据来自后端 <code>/api/cinema/list</code> 与 <code>/api/screening/page</code>，
+          海报存储于阿里云 OSS，按影片聚合展示。
         </p>
       </div>
     </aside>
@@ -174,6 +178,14 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   padding: 12px;
+}
+
+.poster-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .poster-name {

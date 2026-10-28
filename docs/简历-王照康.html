@@ -181,18 +181,18 @@
     <h2>项目经历</h2>
 
     <div class="row">
-      <div class="project-title">铁路购票系统 · 高并发余票扣减与一致性</div>
+      <div class="project-title">电影票购票系统 · 高并发余票扣减与一致性</div>
       <div class="right">个人项目　2026.03 - 2026.10</div>
     </div>
     <div class="stack">
       <b>技术栈</b>：Java 17 · Spring Boot 2.7 · MyBatis-Plus · MySQL 8 · Redis · Redisson · RabbitMQ · nginx
     </div>
     <div class="stack">
-      <b>项目描述</b>：车次查询、下单、支付、退票完整闭环，重点解决高并发扣减与异步一致性。
+      <b>项目描述</b>：影片查询、下单、支付、退票完整闭环，重点解决高并发扣减与异步一致性。
     </div>
 
     <ul>
-      <li><strong>防超卖四层防护</strong>：同一用户 30 秒幂等键 → Redisson 分布式锁（粒度：车次 + 日期 + 席别）→
+      <li><strong>防超卖四层防护</strong>：同一用户 30 秒幂等键 → Redisson 分布式锁（粒度：场次 + 日期 + 票种）→
         Redis Lua 原子判断并预扣 → MySQL <code>WHERE remain &gt;= n</code> 兜底；
         12 / 15 人并发抢 10 张票，账目全部对平，<span class="num" style="white-space:nowrap">无超卖、无负库存</span>。</li>
 

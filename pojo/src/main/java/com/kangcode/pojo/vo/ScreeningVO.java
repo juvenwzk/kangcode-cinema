@@ -24,6 +24,9 @@ public class ScreeningVO {
 
     private String movieName;
 
+    /** 电影海报（OSS 完整 URL），未上传时为 null */
+    private String posterUrl;
+
     private Long cinemaId;
 
     private Long hallId;

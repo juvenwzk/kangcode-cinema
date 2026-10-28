@@ -6,7 +6,7 @@
 
     <parent>
         <groupId>com.kangcode</groupId>
-        <artifactId>kangcode-railway-ticket</artifactId>
+        <artifactId>kangcode-movie-ticket</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 

@@ -15,6 +15,7 @@ import com.kangcode.server.mq.TicketOrderProducer;
 import com.kangcode.server.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -43,7 +44,7 @@ public class  TicketServiceImpl implements TicketService {
      * common 模块的 TicketCacheConstant（原来散在本类与 StockReconcileTask 两处）。
      */
 
-
+    private final RBloomFilter<String> screeningBloomFilter;
     private final StringRedisTemplate stringRedisTemplate;
     private final RedissonClient redissonClient;
     private final ScreeningSeatMapper screeningSeatMapper;
@@ -53,6 +54,12 @@ public class  TicketServiceImpl implements TicketService {
     @Override
     public Integer queryRemain(Long screeningId, LocalDate showDate, String ticketType) {
         String date = showDate.toString();
+        //布隆过滤器前置拦截：一定不存在的组合直接挡掉,不进缓存也不进DB
+        // Redisson 的 API 是 contains()（Guava 才叫 mightContain()）：返回 false = 一定不存在
+        if (!screeningBloomFilter.contains(screeningId+":"+date+":"+ticketType)) {
+            return 0;
+        }
+
         // 注意：余票必须用「库存 key」screening:stock:*，不能用「锁 key」screening:lock:*。
         // 锁 key 归 Redisson 的 RLock 使用（Hash 结构），把余票字符串写进去会导致购票时 WRONGTYPE。
         String key = RedisKeyConstant.ticketStockKey(screeningId, date, ticketType);
@@ -62,6 +69,7 @@ public class  TicketServiceImpl implements TicketService {
         if (cached != null) {
             return TicketCacheConstant.EMPTY_VALUE.equals(cached) ? 0 : Integer.valueOf(cached);
         }
+
 
         // 2. 抢互斥锁
         String rebuildLockKey = key + "#rebuild";
@@ -204,12 +212,12 @@ public class  TicketServiceImpl implements TicketService {
     }
 
     /**
-     * 订单号：KR + 放映日期 + 6 位每日序号，例如 KR20261005000001
+     * 订单号：MT + 放映日期 + 6 位每日序号，例如 MT20261005000001
      */
     private String generateOrderNo(LocalDate showDate) {
         String day = showDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         Long seq = stringRedisTemplate.opsForValue().increment(RedisKeyConstant.orderSeqKey(day));
         long value = seq == null ? 1L : seq;
-        return "KR" + day + String.format("%06d", value);
+        return "MT" + day + String.format("%06d", value);
     }
 }

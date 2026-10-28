@@ -1,10 +1,10 @@
 -- ============================================================
--- 康轨 KangRail · 高并发铁路购票系统 初始化脚本
+-- 电影票购票系统 · 高并发余票扣减与一致性 初始化脚本
 -- 依赖：MySQL 8.0
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS railway DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE railway;
+CREATE DATABASE IF NOT EXISTS movie DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE movie;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS sys_user (
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     username    VARCHAR(64)  NOT NULL COMMENT '登录名',
     password    VARCHAR(128) NOT NULL COMMENT 'BCrypt 加密密码',
     nickname    VARCHAR(64)  DEFAULT NULL COMMENT '昵称',
+    avatar_url  VARCHAR(512) DEFAULT NULL COMMENT '头像 URL（阿里云 OSS）',
     phone       VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 0禁用 1正常',
     create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,9 +43,10 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
 -- 影院表
 CREATE TABLE IF NOT EXISTS cinema (
     id           BIGINT      NOT NULL AUTO_INCREMENT,
-    cinema_code VARCHAR(16) NOT NULL COMMENT '影院电报码/站码',
+    cinema_code VARCHAR(16) NOT NULL COMMENT '影院编码',
     cinema_name VARCHAR(64) NOT NULL,
     city         VARCHAR(64) DEFAULT NULL,
+    logo_url    VARCHAR(512) DEFAULT NULL COMMENT '影院 Logo URL（阿里云 OSS）',
     status       TINYINT     NOT NULL DEFAULT 1,
     create_time  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -56,18 +58,19 @@ CREATE TABLE IF NOT EXISTS screening (
     id               BIGINT      NOT NULL AUTO_INCREMENT,
     screening_no         VARCHAR(32) NOT NULL COMMENT '场次号，如 S1001',
     movie_name       VARCHAR(64) DEFAULT NULL,
+    poster_url       VARCHAR(512) DEFAULT NULL COMMENT '电影海报 URL（阿里云 OSS）',
     cinema_id BIGINT      NOT NULL,
     hall_id   BIGINT      NOT NULL,
     start_time       TIME        NOT NULL,
     end_time         TIME        NOT NULL,
-    status           TINYINT     NOT NULL DEFAULT 1 COMMENT '0停运 1运行',
+    status           TINYINT     NOT NULL DEFAULT 1 COMMENT '0停映 1上映',
     create_time      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_screening_no (screening_no)
 ) ENGINE = InnoDB COMMENT = '场次表';
 
--- 场次影厅表
+-- 影厅排期表（某场次在哪些影厅放映）
 CREATE TABLE IF NOT EXISTS hall (
     id           BIGINT  NOT NULL AUTO_INCREMENT,
     screening_id     BIGINT  NOT NULL,
@@ -80,9 +83,9 @@ CREATE TABLE IF NOT EXISTS hall (
     PRIMARY KEY (id),
     UNIQUE KEY uk_hall (screening_id, hall_no),
     KEY idx_cinema_id (cinema_id)
-) ENGINE = InnoDB COMMENT = '场次影厅表';
+) ENGINE = InnoDB COMMENT = '影厅排期表';
 
--- 座位库存表（热点表：查询走 Redis 缓存 + Redisson 分布式锁）
+-- 余票库存表（热点表：查询走 Redis 缓存 + Redisson 分布式锁 + 布隆过滤器防穿透）
 CREATE TABLE IF NOT EXISTS screening_seat (
     id          BIGINT      NOT NULL AUTO_INCREMENT,
     screening_id    BIGINT      NOT NULL,
@@ -96,7 +99,7 @@ CREATE TABLE IF NOT EXISTS screening_seat (
     update_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_screening_date_type (screening_id, show_date, ticket_type)
-) ENGINE = InnoDB COMMENT = '座位库存表';
+) ENGINE = InnoDB COMMENT = '余票库存表';
 
 -- 订单表
 CREATE TABLE IF NOT EXISTS movie_order (
@@ -118,10 +121,10 @@ CREATE TABLE IF NOT EXISTS movie_order (
     PRIMARY KEY (id),
     UNIQUE KEY uk_order_no (order_no),
     KEY idx_user_id (user_id),
-    KEY idx_train_date (screening_id, show_date)
+    KEY idx_screening_date (screening_id, show_date)
 ) ENGINE = InnoDB COMMENT = '订单表';
 
--- 订单明细表（乘客）
+-- 订单明细表（观影人）
 CREATE TABLE IF NOT EXISTS movie_order_item (
     id             BIGINT      NOT NULL AUTO_INCREMENT,
     order_id       BIGINT      NOT NULL,
@@ -132,6 +135,20 @@ CREATE TABLE IF NOT EXISTS movie_order_item (
     PRIMARY KEY (id),
     KEY idx_order_id (order_id)
 ) ENGINE = InnoDB COMMENT = '订单明细表';
+
+-- 库存释放幂等日志
+-- 退票 / 取消 / 超时关单都会发一条「释放库存」的 MQ 消息，MQ 至少投递一次，
+-- 同一个 orderNo 可能被消费多次。这里用 order_no 唯一键做闸门：
+-- 第一次插得进去 → 继续回补库存；重复消费撞唯一键 → 直接返回，库存不会被加两次。
+CREATE TABLE IF NOT EXISTS stock_release_log (
+    id           BIGINT      NOT NULL AUTO_INCREMENT,
+    order_no     VARCHAR(32) NOT NULL COMMENT '订单号',
+    reason       VARCHAR(16) NOT NULL COMMENT 'CANCEL / TIMEOUT / REFUND',
+    ticket_count INT         NOT NULL DEFAULT 1,
+    create_time  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_release_order_no (order_no)
+) ENGINE = InnoDB COMMENT = '库存释放幂等日志';
 
 -- ============================================================
 -- 初始数据

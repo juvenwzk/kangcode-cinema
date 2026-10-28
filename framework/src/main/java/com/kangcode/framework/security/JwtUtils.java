@@ -15,7 +15,7 @@ import java.util.Date;
 @Component
 public class JwtUtils {
 
-    @Value("${jwt.secret:kangcode-railway-ticket-secret}")
+    @Value("${jwt.secret:kangcode-movie-ticket-secret}")
     private String secret;
 
     @Value("${jwt.expire-minutes:720}")

@@ -78,7 +78,7 @@ class P4RefundTest {
     private MovieOrder order(int status) {
         MovieOrder o = new MovieOrder();
         o.setId(1L);
-        o.setOrderNo("KR20261120000003");
+        o.setOrderNo("MT20261120000003");
         o.setUserId(7L);
         o.setScreeningId(2L);
         o.setShowDate(LocalDate.of(2026, 11, 20));
@@ -103,13 +103,13 @@ class P4RefundTest {
         when(orderMapper.selectOne(any())).thenReturn(order(PAID));
         when(orderMapper.update(isNull(), any())).thenReturn(1);   // 影响 1 行 = 退票成功
 
-        service.refund(7L, "KR20261120000003");
+        service.refund(7L, "MT20261120000003");
 
         ArgumentCaptor<StockReleaseMessage> cap = ArgumentCaptor.forClass(StockReleaseMessage.class);
         verify(producer).sendStockRelease(cap.capture());
 
         StockReleaseMessage msg = cap.getValue();
-        assertEquals("KR20261120000003", msg.getOrderNo());
+        assertEquals("MT20261120000003", msg.getOrderNo());
         assertEquals(2L, msg.getScreeningId().longValue(), "带上了场次，消费者才能定位库存 key");
         assertEquals(LocalDate.of(2026, 11, 20), msg.getShowDate());
         assertEquals("二等座", msg.getTicketType());
@@ -123,7 +123,7 @@ class P4RefundTest {
         when(orderMapper.selectOne(any())).thenReturn(order(ISSUED));
         when(orderMapper.update(isNull(), any())).thenReturn(1);
 
-        service.refund(7L, "KR20261120000003");
+        service.refund(7L, "MT20261120000003");
 
         verify(producer).sendStockRelease(any());
     }
@@ -134,7 +134,7 @@ class P4RefundTest {
         when(orderMapper.selectOne(any())).thenReturn(order(PAID));
         when(orderMapper.update(isNull(), any())).thenReturn(1);
 
-        service.refund(7L, "KR20261120000003");
+        service.refund(7L, "MT20261120000003");
 
         LambdaUpdateWrapper<MovieOrder> w = captureUpdateWrapper();
         String set = (w.getSqlSet() == null ? "" : w.getSqlSet()).toLowerCase();
@@ -167,7 +167,7 @@ class P4RefundTest {
         when(orderMapper.selectOne(any())).thenReturn(null);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.refund(999L, "KR20261120000003"));
+                () -> service.refund(999L, "MT20261120000003"));
 
         assertEquals(ResultCode.NOT_FOUND.getCode(), ex.getCode());
         verify(producer, never()).sendStockRelease(any());
@@ -180,7 +180,7 @@ class P4RefundTest {
         when(orderMapper.update(isNull(), any())).thenReturn(0);   // 条件 in(1,3) 没命中
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.refund(7L, "KR20261120000003"));
+                () -> service.refund(7L, "MT20261120000003"));
 
         assertEquals(ResultCode.BUSINESS_ERROR.getCode(), ex.getCode());
         assertTrue(ex.getMessage().contains("未支付"),
@@ -195,7 +195,7 @@ class P4RefundTest {
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.refund(7L, "KR20261120000003"));
+                () -> service.refund(7L, "MT20261120000003"));
 
         assertEquals(ResultCode.BUSINESS_ERROR.getCode(), ex.getCode());
         // 这条断言是重点：重复退票若再发一次消息，库存会被多还一次

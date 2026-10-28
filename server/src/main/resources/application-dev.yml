@@ -1,6 +1,11 @@
 spring:
+  # application-local.yml 被 .gitignore 忽略（规则 *-local.yml），用来放本机密钥：
+  # OSS 的 AK/SK、以及各人不同的数据库密码。optional: 表示文件不存在也能正常启动，
+  # 团队其他人和 CI 拉下代码后直接跑 dev 不会因为缺文件报错。
+  config:
+    import: optional:classpath:application-local.yml
   datasource:
-    url: jdbc:mysql://localhost:3306/railway?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/movie?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 123456
   redis:

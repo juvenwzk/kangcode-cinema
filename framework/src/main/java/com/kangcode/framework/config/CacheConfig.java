@@ -30,7 +30,7 @@ import java.util.Map;
 public class CacheConfig {
 
     /** Key 前缀，避免和业务手写的 key 冲突 */
-    private static final String KEY_PREFIX = "railway:cache:";
+    private static final String KEY_PREFIX = "movie:cache:";
 
     /**
      * 缓存值的序列化器：JSON + 类型信息 + Java8 时间支持。

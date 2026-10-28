@@ -3,11 +3,11 @@ version: "3.8"
 services:
   mysql:
     image: mysql:8.0
-    container_name: railway-mysql
+    container_name: movie-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: railway
+      MYSQL_DATABASE: movie
       TZ: Asia/Shanghai
     command:
       - --character-set-server=utf8mb4
@@ -29,7 +29,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: railway-redis
+    container_name: movie-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -44,7 +44,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.12-management
-    container_name: railway-rabbitmq
+    container_name: movie-rabbitmq
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: admin

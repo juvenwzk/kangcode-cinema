@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
@@ -29,6 +30,16 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + " " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return Result.fail(ResultCode.BAD_REQUEST.getCode(), message);
+    }
+
+    /**
+     * 上传超过 multipart 上限。
+     * 这个异常在进入 Controller 之前就被 Spring 抛出，不接住的话前端只会看到 500 + 一坨堆栈。
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<Void> handleUploadSizeException(MaxUploadSizeExceededException e) {
+        log.warn("上传文件超出限制: {}", e.getMessage());
+        return Result.fail(ResultCode.BAD_REQUEST.getCode(), "图片太大了，请压缩后再上传（单张不超过 5MB）");
     }
 
     @ExceptionHandler(Exception.class)

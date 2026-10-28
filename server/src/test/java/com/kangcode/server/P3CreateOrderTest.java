@@ -69,8 +69,8 @@ class P3CreateOrderTest {
 
     private OrderCreateMessage msg() {
         return OrderCreateMessage.builder()
-                .messageId("KR20261005000001")
-                .orderNo("KR20261005000001")
+                .messageId("MT20261005000001")
+                .orderNo("MT20261005000001")
                 .userId(7L)
                 .screeningId(2L)
                 .showDate(LocalDate.of(2026, 10, 5))
@@ -121,7 +121,7 @@ class P3CreateOrderTest {
         verify(orderMapper).insert(cap.capture());
         MovieOrder saved = cap.getValue();
 
-        assertEquals("KR20261005000001", saved.getOrderNo());
+        assertEquals("MT20261005000001", saved.getOrderNo());
         assertEquals(0, saved.getStatus().intValue(), "新订单状态应为 0（待支付）");
         assertEquals(55300L, saved.getTotalAmount().longValue(), "1 张 × 55300 分");
         assertNotNull(saved.getPayExpireTime(), "应有支付过期时间");

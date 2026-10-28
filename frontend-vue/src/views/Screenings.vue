@@ -125,12 +125,19 @@ onMounted(load)
     <!-- 影院信息 -->
     <div class="card cinema-head" v-loading="loading">
       <div class="head-left">
-        <h1>{{ cinema?.cinemaName || '影院' }}</h1>
-        <div class="head-meta">
-          <el-icon><Location /></el-icon>
-          {{ cinema?.city || '—' }}
-          <span class="dot">·</span>
-          今日 {{ list.length }} 个场次
+        <div class="head-brand">
+          <div v-if="cinema?.logoUrl" class="head-logo">
+            <img :src="cinema.logoUrl" :alt="cinema.cinemaName" />
+          </div>
+          <div>
+            <h1>{{ cinema?.cinemaName || '影院' }}</h1>
+            <div class="head-meta">
+              <el-icon><Location /></el-icon>
+              {{ cinema?.city || '—' }}
+              <span class="dot">·</span>
+              今日 {{ list.length }} 个场次
+            </div>
+          </div>
         </div>
       </div>
       <el-button plain @click="router.push('/cinemas')">返回影院列表</el-button>
@@ -154,6 +161,12 @@ onMounted(load)
 
     <div v-loading="loading" class="card screening-list">
       <div v-for="s in list" :key="s.id" class="screening-row">
+        <!-- 电影海报：没有就留一块灰底占位，保证时间/片名/按钮三列始终对齐 -->
+        <div class="poster">
+          <img v-if="s.posterUrl" :src="s.posterUrl" :alt="s.movieName" loading="lazy" />
+          <span v-else>暂无<br />海报</span>
+        </div>
+
         <div class="time-box">
           <div class="time">{{ (s.startTime || '').slice(0, 5) }}</div>
           <div class="end">{{ (s.endTime || '').slice(0, 5) }} 散场</div>
@@ -181,10 +194,13 @@ onMounted(load)
     <!-- 购票弹窗 -->
     <el-dialog v-model="dialogVisible" title="选择票种" width="560px">
       <div class="dialog-movie">
-        <b>{{ current?.movieName }}</b>
-        <span class="muted">
-          {{ showDate }} {{ (current?.startTime || '').slice(0, 5) }} · 影厅 {{ current?.hallId }}
-        </span>
+        <img v-if="current?.posterUrl" :src="current.posterUrl" class="dialog-poster" :alt="current?.movieName" />
+        <div class="dialog-info">
+          <b>{{ current?.movieName }}</b>
+          <span class="muted">
+            {{ showDate }} {{ (current?.startTime || '').slice(0, 5) }} · 影厅 {{ current?.hallId }}
+          </span>
+        </div>
       </div>
 
       <div v-loading="seatLoading">
@@ -246,6 +262,49 @@ onMounted(load)
 .cinema-head h1 {
   margin: 0 0 8px;
   font-size: 20px;
+}
+
+.head-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.head-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  flex: 0 0 56px;
+}
+
+.head-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.poster {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 78px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-2, #f5f5f5);
+  color: var(--ink-3, #aaa);
+  font-size: 11px;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .head-meta {
@@ -319,9 +378,23 @@ onMounted(load)
 
 .dialog-movie {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 14px;
+}
+
+.dialog-poster {
+  width: 48px;
+  height: 66px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: 0 0 48px;
+}
+
+.dialog-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .seat-options {

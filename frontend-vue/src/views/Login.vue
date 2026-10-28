@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { authApi } from '../api'
-import { TOKEN_KEY } from '../api/http'
+import { TOKEN_KEY, ROLE_KEY } from '../api/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,9 +41,14 @@ async function submit() {
           })
 
     localStorage.setItem(TOKEN_KEY, data.token)
+    // 角色存本地，供路由守卫做第一道判断（真正的权限校验在后端 AdminInterceptor）
+    localStorage.setItem(ROLE_KEY, data.role || 'USER')
+    localStorage.setItem('mt_user', data.nickname || data.username || '')
     emit('logined')
     ElMessage.success(tab.value === 'login' ? '登录成功' : '注册成功，已自动登录')
-    router.push(route.query.redirect || '/cinemas')
+    // 管理员默认进后台；但如果是从别的页面被踢到登录页的（带 redirect），优先回原页面
+    const fallback = data.role === 'ADMIN' ? '/admin/cinemas' : '/cinemas'
+    router.push(route.query.redirect || fallback)
   } catch (e) {
     /* 拦截器已提示 */
   } finally {

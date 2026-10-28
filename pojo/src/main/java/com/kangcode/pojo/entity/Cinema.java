@@ -24,6 +24,9 @@ public class Cinema {
 
     private String city;
 
+    /** 影院 Logo 的 OSS 完整 URL，未上传时为 null（前端回落到占位图） */
+    private String logoUrl;
+
     private Integer status;
 
     private LocalDateTime createTime;

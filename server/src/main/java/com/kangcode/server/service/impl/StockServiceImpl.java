@@ -8,17 +8,21 @@ import com.kangcode.common.exception.BusinessException;
 import com.kangcode.pojo.dto.StockPublishRequest;
 import com.kangcode.pojo.entity.ScreeningSeat;
 import com.kangcode.pojo.entity.Hall;
+import com.kangcode.pojo.vo.StockVO;
 import com.kangcode.server.mapper.ScreeningSeatMapper;
 import com.kangcode.server.service.StockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBloomFilter;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -28,6 +32,7 @@ public class StockServiceImpl implements StockService {
 
     private final ScreeningSeatMapper screeningSeatMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final RBloomFilter<String> screeningBloomFilter;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -78,6 +83,55 @@ public class StockServiceImpl implements StockService {
         );
         stringRedisTemplate.opsForValue()
                 .set(key, String.valueOf(remain), TicketCacheConstant.STOCK_CACHE_MINUTES, TimeUnit.MINUTES);
+
+        screeningBloomFilter.add(request.getScreeningId()+":"+showDate+":"+request.getTicketType());
         return remain;
+    }
+
+    /**
+     * 管理端查看库存。
+     * <p>用户端的 /seats 只返回「票种 + 票价 + 余票」，管理端还要知道 total（放了多少），
+     * 所以单独一个 VO，不跟用户端共用。</p>
+     */
+    @Override
+    public List<StockVO> listStock(Long screeningId, LocalDate showDate) {
+        LambdaQueryWrapper<ScreeningSeat> wrapper = new LambdaQueryWrapper<ScreeningSeat>()
+                .eq(ScreeningSeat::getScreeningId, screeningId);
+        if (showDate != null) {
+            wrapper.eq(ScreeningSeat::getShowDate, showDate);
+        } else {
+            // 不传日期就只看今天及以后，避免管理端被历史数据淹没
+            wrapper.ge(ScreeningSeat::getShowDate, LocalDate.now());
+        }
+        wrapper.orderByAsc(ScreeningSeat::getShowDate).orderByAsc(ScreeningSeat::getPrice);
+
+        return screeningSeatMapper.selectList(wrapper).stream()
+                .map(s -> StockVO.builder()
+                        .id(s.getId())
+                        .screeningId(s.getScreeningId())
+                        .showDate(s.getShowDate())
+                        .ticketType(s.getTicketType())
+                        .total(s.getTotal())
+                        .remain(s.getRemain())
+                        .price(s.getPrice())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 改票价（管理端）。
+     * <p>放票时票价先写 0（因为放票只关心数量），真正定价走这里。
+     * 票价只影响下单时的金额计算，不涉及库存，所以不需要动 Redis 余票缓存。</p>
+     */
+    @Override
+    public void updatePrice(Long stockId, Long price) {
+        ScreeningSeat seat = screeningSeatMapper.selectById(stockId);
+        if (seat == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND);
+        }
+        seat.setPrice(price);
+        seat.setUpdateTime(LocalDateTime.now());
+        screeningSeatMapper.updateById(seat);
+        log.info("票价已更新 stockId={} {} {} -> {} 分", stockId, seat.getShowDate(), seat.getTicketType(), price);
     }
 }

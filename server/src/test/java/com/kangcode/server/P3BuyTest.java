@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -45,7 +46,7 @@ class P3BuyTest {
     private static final Long USER = 7L;
     private static final Long SCREENING = 2L;
     private static final LocalDate DATE = LocalDate.of(2026, 10, 5);
-    private static final String SEAT = "二等座";
+    private static final String SEAT = "普通票";
     private static final String STOCK_KEY = RedisKeyConstant.ticketStockKey(SCREENING, DATE.toString(), SEAT);
 
     private StringRedisTemplate redis;
@@ -69,7 +70,7 @@ class P3BuyTest {
 
         producer = mock(TicketOrderProducer.class);
 
-        service = new TicketServiceImpl(redis, redisson, mock(ScreeningSeatMapper.class),
+        service = new TicketServiceImpl(mock(RBloomFilter.class), redis, redisson, mock(ScreeningSeatMapper.class),
                 producer, new DefaultRedisScript<>());
     }
 
@@ -96,7 +97,7 @@ class P3BuyTest {
         TicketBuyVO vo = service.buy(req(1), USER);
 
         assertNotNull(vo.getOrderNo());
-        assertTrue(vo.getOrderNo().startsWith("KR20261005"), "订单号应以 KR+日期 开头");
+        assertTrue(vo.getOrderNo().startsWith("MT20261005"), "订单号应以 MT+日期 开头");
         assertEquals(0, vo.getStatus().intValue());
 
         ArgumentCaptor<OrderCreateMessage> cap = ArgumentCaptor.forClass(OrderCreateMessage.class);

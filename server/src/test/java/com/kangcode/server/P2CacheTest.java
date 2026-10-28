@@ -8,6 +8,7 @@ import com.kangcode.server.service.impl.TicketServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -35,7 +36,7 @@ class P2CacheTest {
 
     private static final Long SCREENING = 2L;
     private static final LocalDate DATE = LocalDate.of(2026, 10, 5);
-    private static final String SEAT = "二等座";
+    private static final String SEAT = "普通票";
     private static final String KEY = RedisKeyConstant.ticketStockKey(SCREENING, DATE.toString(), SEAT);
 
     private StringRedisTemplate redis;
@@ -50,7 +51,13 @@ class P2CacheTest {
         when(redis.opsForValue()).thenReturn(ops);
 
         seatMapper = mock(ScreeningSeatMapper.class);
-        service = new TicketServiceImpl(redis, mock(RedissonClient.class), seatMapper,
+
+        // 布隆过滤器 mock：contains 一律返回 true（"已登记"），否则 queryRemain 第一道闸门直接拦截
+        @SuppressWarnings("unchecked")
+        RBloomFilter<String> bloom = mock(RBloomFilter.class);
+        when(bloom.contains(anyString())).thenReturn(true);
+
+        service = new TicketServiceImpl(bloom, redis, mock(RedissonClient.class), seatMapper,
                 mock(TicketOrderProducer.class), new DefaultRedisScript<>());
     }
 

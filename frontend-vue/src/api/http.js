@@ -3,6 +3,13 @@ import { ElMessage } from 'element-plus'
 
 export const TOKEN_KEY = 'mt_token'
 
+/**
+ * 角色单独存一份在本地：
+ * 路由守卫是同步执行的，拿不到请求结果，只能读本地缓存做第一道快速判断。
+ * 真正的权限校验永远在后端（AdminInterceptor），前端这个只负责「别让用户白跑一趟」。
+ */
+export const ROLE_KEY = 'mt_role'
+
 const http = axios.create({
   baseURL: '/api',
   timeout: 10000

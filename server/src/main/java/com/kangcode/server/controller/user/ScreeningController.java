@@ -1,4 +1,4 @@
-package com.kangcode.server.controller;
+package com.kangcode.server.controller.user;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.kangcode.common.core.Result;

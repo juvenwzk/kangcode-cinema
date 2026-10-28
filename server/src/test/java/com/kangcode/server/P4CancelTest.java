@@ -69,7 +69,7 @@ class P4CancelTest {
     private MovieOrder order(int status) {
         MovieOrder o = new MovieOrder();
         o.setId(1L);
-        o.setOrderNo("KR20261120000001");
+        o.setOrderNo("MT20261120000001");
         o.setUserId(7L);
         o.setScreeningId(2L);
         o.setShowDate(LocalDate.of(2026, 11, 20));
@@ -85,13 +85,13 @@ class P4CancelTest {
         when(orderMapper.selectOne(any())).thenReturn(order(WAIT_PAY));
         when(orderMapper.update(isNull(), any())).thenReturn(1);   // 影响 1 行 = 取消成功
 
-        service.cancel(7L, "KR20261120000001");
+        service.cancel(7L, "MT20261120000001");
 
         ArgumentCaptor<StockReleaseMessage> cap = ArgumentCaptor.forClass(StockReleaseMessage.class);
         verify(producer).sendStockRelease(cap.capture());
 
         StockReleaseMessage msg = cap.getValue();
-        assertEquals("KR20261120000001", msg.getOrderNo());
+        assertEquals("MT20261120000001", msg.getOrderNo());
         assertEquals(2L, msg.getScreeningId().longValue(), "带上了场次，消费者才能定位库存 key");
         assertEquals(LocalDate.of(2026, 11, 20), msg.getShowDate());
         assertEquals("二等座", msg.getTicketType());
@@ -105,7 +105,7 @@ class P4CancelTest {
         when(orderMapper.selectOne(any())).thenReturn(null);   // 别人的订单，查出来是 null
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.cancel(999L, "KR20261120000001"));
+                () -> service.cancel(999L, "MT20261120000001"));
 
         assertEquals(ResultCode.NOT_FOUND.getCode(), ex.getCode());
         verify(producer, never()).sendStockRelease(any());     // 更不该放库存
@@ -118,7 +118,7 @@ class P4CancelTest {
         when(orderMapper.update(isNull(), any())).thenReturn(0);   // 条件 status=0 没命中
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.cancel(7L, "KR20261120000001"));
+                () -> service.cancel(7L, "MT20261120000001"));
 
         assertEquals(ResultCode.ORDER_PAID.getCode(), ex.getCode());
         verify(producer, never()).sendStockRelease(any());
@@ -131,7 +131,7 @@ class P4CancelTest {
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.cancel(7L, "KR20261120000001"));
+                () -> service.cancel(7L, "MT20261120000001"));
 
         assertEquals(ResultCode.ORDER_CANCELED.getCode(), ex.getCode());
         // 这条断言是重点：重复取消若再发一次消息，库存会被多还一次

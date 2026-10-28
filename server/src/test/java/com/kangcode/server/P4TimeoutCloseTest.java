@@ -76,7 +76,7 @@ class P4TimeoutCloseTest {
 
     private MovieOrder order(int status) {
         MovieOrder o = new MovieOrder();
-        o.setOrderNo("KR20261123000001");
+        o.setOrderNo("MT20261123000001");
         o.setUserId(11L);
         o.setScreeningId(1L);
         o.setShowDate(LocalDate.of(2026, 11, 23));
@@ -94,13 +94,13 @@ class P4TimeoutCloseTest {
         when(orderMapper.update(isNull(), any())).thenReturn(1);      // 条件命中，关单成功
         when(orderMapper.selectOne(any())).thenReturn(order(WAIT_PAY));
 
-        service.closeTimeoutOrder("KR20261123000001");
+        service.closeTimeoutOrder("MT20261123000001");
 
         ArgumentCaptor<StockReleaseMessage> cap = ArgumentCaptor.forClass(StockReleaseMessage.class);
         verify(producer).sendStockRelease(cap.capture());
 
         StockReleaseMessage msg = cap.getValue();
-        assertEquals("KR20261123000001", msg.getOrderNo());
+        assertEquals("MT20261123000001", msg.getOrderNo());
         assertEquals(1L, msg.getScreeningId().longValue());
         assertEquals(LocalDate.of(2026, 11, 23), msg.getShowDate());
         assertEquals(1, msg.getTicketCount().intValue());
@@ -113,7 +113,7 @@ class P4TimeoutCloseTest {
         // 用户在第 29 分钟付了款，延时消息却在之后才到 → WHERE status=0 不命中
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
-        service.closeTimeoutOrder("KR20261123000001");
+        service.closeTimeoutOrder("MT20261123000001");
 
         // 这两条断言是这套设计的命门：一旦漏了，用户付了钱票还被放回去
         verify(producer, never()).sendStockRelease(any());
@@ -125,7 +125,7 @@ class P4TimeoutCloseTest {
     void canceledOrderNotClosedAgain() {
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
-        service.closeTimeoutOrder("KR20261123000001");
+        service.closeTimeoutOrder("MT20261123000001");
 
         verify(producer, never()).sendStockRelease(any());
     }
@@ -138,7 +138,7 @@ class P4TimeoutCloseTest {
         when(seatMapper.update(isNull(), any())).thenReturn(1);
 
         service.releaseStock(StockReleaseMessage.builder()
-                .orderNo("KR20261123000001")
+                .orderNo("MT20261123000001")
                 .screeningId(1L)
                 .showDate(LocalDate.of(2026, 11, 23))
                 .ticketType("二等座")
@@ -159,7 +159,7 @@ class P4TimeoutCloseTest {
         when(seatMapper.update(isNull(), any())).thenReturn(1);
 
         service.releaseStock(StockReleaseMessage.builder()
-                .orderNo("KR20261123000001")
+                .orderNo("MT20261123000001")
                 .screeningId(1L)
                 .showDate(LocalDate.of(2026, 11, 23))
                 .ticketType("二等座")

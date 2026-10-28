@@ -3,15 +3,22 @@ server:
 
 spring:
   application:
-    name: kangcode-railway-ticket
+    name: kangcode-movie-ticket
   profiles:
     active: dev
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  # 图片上传：单文件 5MB、单次请求 10MB。
+  # 这个限制和 aliyun.oss.max-size 是两道闸：Tomcat 在进入 Controller 前先拦一次，
+  # 业务层再按配置校验一次，避免只改一处导致两边口径不一致。
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:railway}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:movie}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
   redis:
@@ -50,8 +57,27 @@ mybatis-plus:
       id-type: auto
 
 jwt:
-  secret: kangcode-railway-ticket-secret-2026
+  secret: kangcode-movie-ticket-secret-2026
   expire-minutes: 720
+
+# ============================================================
+# 阿里云对象存储 OSS：影院 Logo、电影海报、用户头像都存这里
+# 密钥一律通过环境变量注入（OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET），
+# 这里的空默认值意味着「没配就不启用上传」，应用仍可正常启动。
+# 本地开发的实际值放在 application-dev.yml（该文件不入库），
+# 线上请用环境变量或 KMS/密钥管理服务，切勿把 AK/SK 提交进仓库。
+# ============================================================
+aliyun:
+  oss:
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket: ${OSS_BUCKET:}
+    endpoint: ${OSS_ENDPOINT:}
+    # 自定义域名/CDN 加速域名，留空则用 https://{bucket}.{endpoint}
+    domain: ${OSS_DOMAIN:}
+    dir-prefix: movie-ticket
+    max-size: 5242880          # 5MB
+    allow-extensions: jpg,jpeg,png,webp,gif
 
 logging:
   level:

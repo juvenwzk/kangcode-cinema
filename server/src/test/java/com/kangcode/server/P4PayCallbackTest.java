@@ -57,7 +57,7 @@ class P4PayCallbackTest {
     void payFirstTime() {
         when(orderMapper.update(isNull(), any())).thenReturn(1);
 
-        assertDoesNotThrow(() -> service.paySuccess("KR20261120000002"));
+        assertDoesNotThrow(() -> service.paySuccess("MT20261120000002"));
 
         // 只更新一次，且用的是 wrapper 方式（第一个参数 null）
         verify(orderMapper, times(1)).update(isNull(), any());
@@ -70,7 +70,7 @@ class P4PayCallbackTest {
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
         // 关键：不能抛异常。支付平台收到非 200 会一直重试，越重试越乱
-        assertDoesNotThrow(() -> service.paySuccess("KR20261120000002"),
+        assertDoesNotThrow(() -> service.paySuccess("MT20261120000002"),
                 "重复回调必须静默返回，不能抛异常");
 
         verify(orderMapper, times(1)).update(isNull(), any());
@@ -82,7 +82,7 @@ class P4PayCallbackTest {
         // 订单已取消：WHERE status=0 依然不命中 → 0 行
         when(orderMapper.update(isNull(), any())).thenReturn(0);
 
-        assertDoesNotThrow(() -> service.paySuccess("KR20261120000003"));
+        assertDoesNotThrow(() -> service.paySuccess("MT20261120000003"));
     }
 
     @Test
@@ -90,7 +90,7 @@ class P4PayCallbackTest {
     void payNeverReleasesStock() {
         when(orderMapper.update(isNull(), any())).thenReturn(1);
 
-        service.paySuccess("KR20261120000002");
+        service.paySuccess("MT20261120000002");
 
         verify(producer, never()).sendStockRelease(any());
         verify(producer, never()).sendOrderTimeout(any());

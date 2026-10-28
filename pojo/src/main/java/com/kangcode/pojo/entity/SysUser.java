@@ -23,6 +23,9 @@ public class SysUser {
 
     private String nickname;
 
+    /** 头像的 OSS 完整 URL，未上传时为 null（前端回落到默认头像） */
+    private String avatarUrl;
+
     private String phone;
 
     /** 状态：0 禁用 1 正常 */

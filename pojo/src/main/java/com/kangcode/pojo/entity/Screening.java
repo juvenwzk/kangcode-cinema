@@ -23,6 +23,9 @@ public class Screening {
 
     private String movieName;
 
+    /** 电影海报的 OSS 完整 URL，未上传时为 null（前端回落到占位图） */
+    private String posterUrl;
+
     private Long cinemaId;
 
     private Long hallId;

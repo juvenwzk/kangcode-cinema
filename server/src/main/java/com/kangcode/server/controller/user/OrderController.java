@@ -1,4 +1,4 @@
-package com.kangcode.server.controller;
+package com.kangcode.server.controller.user;
 
 import com.kangcode.common.core.Result;
 import com.kangcode.framework.security.UserContext;

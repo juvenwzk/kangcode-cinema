@@ -22,6 +22,9 @@ public class UserVO {
 
     private String nickname;
 
+    /** 头像（OSS 完整 URL），未上传时为 null */
+    private String avatarUrl;
+
     /** 角色编码列表，如 ["USER"]、["ADMIN"] */
     private List<String> roles;
 }
